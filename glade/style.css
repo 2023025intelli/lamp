@@ -1,0 +1,33 @@
+/*
+//         |           |
+//    __|  __|  |   |  |   _ \      __|   __|   __|
+//  \__ \  |    |   |  |   __/     (    \__ \ \__ \
+//  ____/ \__| \__, | _| \___| _| \___| ____/ ____/
+//             ____/
+*/
+
+.sld-volume contents trough highlight {
+    background-color: #32dad4;
+}
+
+.sld-volume contents trough slider {
+    min-height: 20px;
+}
+
+.sld-position contents trough highlight {
+    background-color: #ff7b00;
+}
+
+.sld-position contents trough slider {
+    min-height: 24px;
+}
+
+.highlight-row {
+    background-color: #366bde;
+    color: #ffffff;
+}
+
+.drag-row {
+    background-color: #4876d5;
+    color: #ffffff;
+}
