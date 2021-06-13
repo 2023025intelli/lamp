@@ -123,7 +123,6 @@ int main(int argc, char *argv[]) {
     g_signal_connect(g_btn_prev, "released", G_CALLBACK(prev_callback), NULL);
     g_signal_connect(g_sld_volume, "value-changed", G_CALLBACK(volume_changed), NULL);
     g_signal_connect(g_tgl_above, "toggled", G_CALLBACK(keep_above_callback), NULL);
-    g_signal_connect(g_tgl_shuffle, "toggled", G_CALLBACK(shuffle_callback), NULL);
     g_signal_connect(g_itm_add, "activate", G_CALLBACK(add_to_playlist_callback), NULL);
     g_signal_connect(g_itm_folder, "activate", G_CALLBACK(open_folder_callback), NULL);
     g_signal_connect(g_itm_save, "activate", G_CALLBACK(save_playlist_callback), NULL);
@@ -131,6 +130,7 @@ int main(int argc, char *argv[]) {
     g_signal_connect(g_itm_clear, "activate", G_CALLBACK(clear_playlist_callback), NULL);
     g_signal_connect(g_lst_playlist, "row-activated", G_CALLBACK(playlist_row_activated), NULL);
     g_signal_connect(g_sld_position, "change-value", G_CALLBACK(position_changed), NULL);
+    g_signal_connect(g_tgl_shuffle, "toggled", G_CALLBACK(shuffle_callback), NULL);
 
 //    gtk_drag_dest_set(GTK_WIDGET(g_lst_playlist), GTK_DEST_DEFAULT_ALL, file_entries, GTK_TARGET_OTHER_APP, GDK_ACTION_MOVE);
 //    g_signal_connect (GTK_WIDGET(g_lst_playlist), "drag-data-received", G_CALLBACK(playlist_row_drag_file_received), NULL);
@@ -171,28 +171,28 @@ static void *play(void *filename) {
 
     /* @formatter:off */
     pthread_cleanup_push(cleanup_play_th, NULL)
-            if (p_ctx.dev == NULL) {
-                g_print("Error opening sound device.\n");
-                pthread_exit(NULL);
+    if (p_ctx.dev == NULL) {
+        g_print("Error opening sound device.\n");
+        pthread_exit(NULL);
+    }
+
+    if (!get_id3_data(&p_ctx)) { set_current_filename_title(); }
+
+    do {
+        while (mpg123_read(p_ctx.mh, p_ctx.buffer, p_ctx.buffer_size, &p_ctx.done) == MPG123_OK) {
+            pthread_mutex_lock(&mx_pause);
+            if (play_th) {
+                ao_play(p_ctx.dev, p_ctx.buffer, p_ctx.done);
+                double pos = min((double) mpg123_tellframe(p_ctx.mh) * p_ctx.frame_d, p_ctx.duration);
+                gtk_range_set_value(g_sld_position, pos);
+                char *str_position = seconds_to_str((int) pos);
+                gtk_label_set_text(g_lbl_position, str_position);
+                g_free(str_position);
             }
-
-            if (!get_id3_data(&p_ctx)) { set_current_filename_title(); }
-
-            do {
-                while (mpg123_read(p_ctx.mh, p_ctx.buffer, p_ctx.buffer_size, &p_ctx.done) == MPG123_OK) {
-                    pthread_mutex_lock(&mx_pause);
-                    if (play_th) {
-                        ao_play(p_ctx.dev, p_ctx.buffer, p_ctx.done);
-                        double pos = min((double) mpg123_tellframe(p_ctx.mh) * p_ctx.frame_d, p_ctx.duration);
-                        gtk_range_set_value(g_sld_position, pos);
-                        char *str_position = seconds_to_str((int) pos);
-                        gtk_label_set_text(g_lbl_position, str_position);
-                        g_free(str_position);
-                    }
-                    pthread_mutex_unlock(&mx_pause);
-                }
-                mpg123_seek_frame(p_ctx.mh, 0, SEEK_SET);
-            } while (gtk_toggle_button_get_active(g_tgl_repeat));
+            pthread_mutex_unlock(&mx_pause);
+        }
+        mpg123_seek_frame(p_ctx.mh, 0, SEEK_SET);
+    } while (gtk_toggle_button_get_active(g_tgl_repeat));
     pthread_cleanup_pop(1);
     /* @formatter:on */
     pthread_cleanup_push((void *) play_next, NULL)
@@ -224,6 +224,7 @@ static void pause_callback(GtkWidget *widget, gpointer data) {
 
 static void stop_callback(GtkWidget *widget, gpointer data) {
     stop_play_th();
+    set_default_album_art();
 }
 
 static void play_next(int reverse, int force) {
@@ -600,6 +601,7 @@ static void cleanup_play_th() {
 static void play_context_init(m_context *ctx, const char *filename) {
     ctx->driver = ao_default_driver_id();
     ctx->mh = mpg123_new(NULL, &ctx->err);
+    mpg123_param2(p_ctx.mh, MPG123_ADD_FLAGS, MPG123_PICTURE, MPG123_PICTURE);
     ctx->buffer_size = mpg123_outblock(ctx->mh);
     ctx->buffer = (char *) malloc(ctx->buffer_size * sizeof(unsigned char));
     mpg123_open(ctx->mh, (char *) filename);
@@ -660,12 +662,6 @@ static int get_id3_data(m_context *ctx) {
     return res;
 }
 
-static void set_default_album_art() {
-    GdkPixbuf *logo = gdk_pixbuf_new_from_resource_at_scale("/res/img/logo.jpg", 128, 128, 1, NULL);
-    gtk_image_set_from_pixbuf(g_img_logo, logo);
-    g_object_unref(logo);
-}
-
 static void get_file_album_art() {
     if (p_ctx.v2 && p_ctx.v2->picture && p_ctx.v2->picture->size && p_ctx.v2->picture->data) {
         GdkPixbuf *res = NULL;
@@ -675,9 +671,15 @@ static void get_file_album_art() {
         gdk_pixbuf_loader_write(loader, p_ctx.v2->picture->data, p_ctx.v2->picture->size, NULL);
         res = gdk_pixbuf_loader_get_pixbuf(loader);
         gtk_image_set_from_pixbuf(g_img_logo, res);
-        g_object_unref(res);
+        gdk_pixbuf_loader_close(loader, NULL);
         g_object_unref(loader);
     } else { set_default_album_art(); }
+}
+
+static void set_default_album_art() {
+    GdkPixbuf *logo = gdk_pixbuf_new_from_resource_at_scale("/res/img/logo.jpg", 128, 128, 1, NULL);
+    gtk_image_set_from_pixbuf(g_img_logo, logo);
+    g_object_unref(logo);
 }
 
 static void reset_widgets() {
@@ -701,7 +703,8 @@ static void save_playlist(const char *filename) {
     for (int i = 0;; i++) {
         GtkListBoxRow *row = gtk_list_box_get_row_at_index(g_lst_playlist, i);
         if (!row) { break; }
-        GList *children = gtk_container_get_children(GTK_CONTAINER(row));
+        GList *handle = gtk_container_get_children(GTK_CONTAINER(row));
+        GList *children = gtk_container_get_children(GTK_CONTAINER(handle->data));
         const gchar *str = gtk_label_get_text(GTK_LABEL(gtk_grid_get_child_at(GTK_GRID(children->data), 0, 1)));
         fputs(str, fp);
         fputc('\n', fp);

@@ -57,7 +57,7 @@
     <property name="window-position">center</property>
     <property name="default-width">380</property>
     <property name="default-height">600</property>
-    <property name="icon-name">applications-multimedia-symbolic</property>
+    <property name="icon">lamp.png</property>
     <property name="gravity">north</property>
     <child>
       <object class="GtkBox">

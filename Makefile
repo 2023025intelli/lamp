@@ -37,3 +37,15 @@ clean:
 	rm -f $(OBJS)
 	rm -rf $(OBJDIR)
 	rm -f lamp
+
+install:
+	cp res/img/lamp.png /usr/share/icons/hicolor/512x512/apps/lamp.png
+	cp res/img/lamp.png /usr/share/icons/hicolor/48x48/apps/lamp.png
+	cp res/lamp.desktop /usr/share/applications/lamp.desktop
+	cp lamp /usr/bin/lamp
+
+uninstall:
+	rm /usr/share/icons/hicolor/512x512/apps/lamp.png
+	rm /usr/share/icons/hicolor/48x48/apps/lamp.png
+	rm /usr/share/applications/lamp.desktop
+	rm /usr/bin/lamp

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Lamp
+Icon=/usr/share/icons/hicolor/512x512/apps/lamp.png
+Exec=lamp %F
+Comment=Simple mp3 player
+Categories=Audio;
+Terminal=false
+StartupNotify=true

@@ -57,5 +57,5 @@ dkms.conf
 
 lamp
 ffplay.c
-
 glade/*~
+resources.c
