@@ -1,11 +1,11 @@
 # glib-compile-resources --target=resources.c --generate-source resources.xml
-# gcc -o lamp main.c resources.c `pkg-config --cflags --libs gtk+-3.0` -lmpg123 -lao
+# gcc -o lamp main.c resources.c `pkg-config --cflags --libs gtk+-3.0` -lportaudio -lpthread -lmpg123
 
 CC ?= gcc
 PKGCONFIG = $(shell which pkg-config)
 CFLAGS = $(shell $(PKGCONFIG) --cflags gtk+-3.0)
 LIBS = $(shell $(PKGCONFIG) --libs gtk+-3.0)
-LIBS += -lpthread -lao -lmpg123
+LIBS += -lpthread -lportaudio -lmpg123
 GLIB_COMPILE_RESOURCES = glib-compile-resources
 
 SRC = main.c
@@ -37,3 +37,15 @@ clean:
 	rm -f $(OBJS)
 	rm -rf $(OBJDIR)
 	rm -f lamp
+
+install:
+	cp res/img/lamp.png /usr/share/icons/hicolor/512x512/apps/lamp.png
+	cp res/img/lamp.png /usr/share/icons/hicolor/48x48/apps/lamp.png
+	cp res/lamp.desktop /usr/share/applications/lamp.desktop
+	cp lamp /usr/bin/lamp
+
+uninstall:
+	rm /usr/share/icons/hicolor/512x512/apps/lamp.png
+	rm /usr/share/icons/hicolor/48x48/apps/lamp.png
+	rm /usr/share/applications/lamp.desktop
+	rm /usr/bin/lamp

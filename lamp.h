@@ -10,9 +10,7 @@ typedef struct {
     size_t buffer_size;
     size_t done;
     int err;
-    int driver;
-    ao_device *dev;
-    ao_sample_format format;
+    PaSampleFormat format;
     int channels;
     int encoding;
     long rate;
