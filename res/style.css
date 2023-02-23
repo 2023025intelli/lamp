@@ -1,0 +1,74 @@
+/*
+//         |           |
+//    __|  __|  |   |  |   _ \      __|   __|   __|
+//  \__ \  |    |   |  |   __/     (    \__ \ \__ \
+//  ____/ \__| \__, | _| \___| _| \___| ____/ ____/
+//             ____/
+*/
+
+.sld-volume highlight {
+    background-color: #32dad4;
+}
+
+.sld-volume slider {
+    min-height: 20px;
+}
+
+.sld-position highlight {
+    background-color: #ff7b00;
+}
+
+.sld-position slider {
+    min-height: 24px;
+}
+
+.highlight-row {
+    background-color: #366bde;
+    color: #ffffff;
+}
+
+.drag-row {
+    background-color: #4876d5;
+    color: #ffffff;
+}
+
+.rounded {
+    border-radius: 24px;
+}
+
+/* COLOR CLASSES */
+.bg-red {
+    background-color: #dc143c;
+}
+
+.bg-orange {
+    background-color: #ff7b00;
+}
+
+.bg-yellow {
+    background-color: #ffd700;
+}
+
+.bg-green {
+    background-color: #00FF7F;
+}
+
+.bg-cyan {
+    background-color: #32dad4;
+}
+
+.bg-blue {
+    background-color: #366bde;
+}
+
+.bg-purple {
+    background-color: #7b68ee;
+}
+
+.icon-md {
+    -gtk-icon-size: 1.4rem;
+}
+
+.icon-lg {
+    -gtk-icon-size: 2rem;
+}

@@ -1,125 +1,115 @@
-
 #ifndef LAMP_LAMP_H
 #define LAMP_LAMP_H
 
+#include "playlistitem.h"
+#include "data_types.h"
+
+/*********************************************************
+ * GTK Application Functions
+*********************************************************/
+
+AppWidgets *appWidgetsCreate();
+
+int stateObserver(gpointer data);
+
+void configureUI(AppState *state);
+
+GtkWidget *windowInit(AppState *state);
+
+AppState *appStateCreate(GApplication *app);
+
+void activate(GApplication *app, gpointer user_data);
+
+void appActivate(GApplication *app, gpointer user_data);
+
+void appOpen(GApplication *application, GFile **files, gint n_files, const gchar *hint, gpointer user_data);
+
+/*********************************************************
+ * Playback Functions
+*********************************************************/
+
+void play(AppState *state);
+
+void playThreadStop(AppState *state);
+
+void playThreadCreate(AppState *state);
+
+static void clearShuffle(AppState *state);
+
+static void shufflePlaylist(AppState *state);
+
+void playBtnCB(GtkButton *self, gpointer user_data);
+
+void stopBtnCB(GtkButton *self, gpointer user_data);
+
+void nextBtnCB(GtkButton *self, gpointer user_data);
+
+void prevBtnCB(GtkButton *self, gpointer user_data);
+
+int setNextItem(AppState *state, gboolean backwards);
+
+void pauseBtnCB(GtkButton *self, gpointer user_data);
+
+void volumeChangedCb(GtkRange *self, gpointer user_data);
+
+void repeatTglCB(GtkToggleButton *self, gpointer user_data);
+
+void shuffleTglCB(GtkToggleButton *self, gpointer user_data);
+
+void playlistitemActivate(GtkListView *list, guint position, AppState *state);
+
+void playlistitemActivateCb(GtkListView *list, guint position, gpointer unused);
+
+gboolean positionChangedCb(GtkRange *self, GtkScrollType *scroll, gdouble value, gpointer user_data);
+
+/*********************************************************
+ * Playlist Functions
+*********************************************************/
+
+void playlistAddFile(GListStore *playlist, GFile *file);
+
+void playlistLoad(const char *filename, AppState *state);
+
+void playlistSave(const char *filename, AppState *state);
+
+void addFile(GSimpleAction *action, GVariant *parameter, gpointer data);
+
+void openFolder(GSimpleAction *action, GVariant *parameter, gpointer data);
+
+void onFileAddCb(GtkNativeDialog *native, int response, gpointer user_data);
+
+void openPlaylist(GSimpleAction *action, GVariant *parameter, gpointer data);
+
+void savePlaylist(GSimpleAction *action, GVariant *parameter, gpointer data);
+
+void playlistClear(GSimpleAction *action, GVariant *parameter, gpointer data);
+
+void onFolderAddCb(GtkNativeDialog *native, int response, gpointer user_data);
+
+void onPlaylistOpenCb(GtkNativeDialog *native, int response, gpointer user_data);
+
+void onPlaylistSaveCb(GtkNativeDialog *native, int response, gpointer user_data);
+
+void playlistitemBindCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data);
+
+/*********************************************************
+ * User Interface Functions
+*********************************************************/
+
+void setupUI(AppState *state);
+
+void resetUI(AppState *state);
+
+void updateUI(AppState *state);
+
+void setPositionStr(AppState *state);
+
+void setDefaultImage(GtkWidget *image);
+
+void playlistitemSetupCb(GtkListItemFactory *factory, GtkListItem *list_item);
+
+int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int height);
+
+//guint create_generic_signal(const gchar *name);
+
 #endif //LAMP_LAMP_H
-
-typedef struct {
-    mpg123_handle *mh;
-    char *buffer;
-    size_t buffer_size;
-    size_t done;
-    int err;
-    int driver;
-    ao_device *dev;
-    ao_sample_format format;
-    int channels;
-    int encoding;
-    long rate;
-    off_t frames_c;
-    double frame_d;
-    int duration;
-    mpg123_id3v2 *v2;
-} m_context;
-
-static GtkTargetEntry row_entries[] = {
-        {"GTK_LIST_BOX_ROW", GTK_TARGET_SAME_APP, 0}
-};
-
-static GtkTargetEntry file_entries[] = {
-        {"AUDIO_FILE", GTK_TARGET_OTHER_APP, 0}
-};
-
-static void playlist_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointer user_data);
-
-static void window_size_allocate(GtkWidget *window, GdkRectangle *allocation, gpointer user_data);
-
-static void play_callback(GtkWidget *widget, gpointer data);
-
-static void pause_callback(GtkWidget *widget, gpointer data);
-
-static void stop_callback(GtkWidget *widget, gpointer data);
-
-static void next_callback(GtkWidget *widget, gpointer data);
-
-static void prev_callback(GtkWidget *widget, gpointer data);
-
-gboolean window_key_press_callback(GtkWidget *widget, GdkEvent *event, gpointer user_data);
-
-static void add_file_to_playlist(GtkListBox *playlist, const char *filename);
-
-static void volume_changed(GtkRange *range, gpointer user_data);
-
-static void position_changed(GtkRange *range, GtkScrollType scroll, double value, gpointer user_data);
-
-static void *play(void *filename);
-
-static void pause_player();
-
-static void play_th_create();
-
-static void reset_global_vars();
-
-static void cleanup_play_th();
-
-static void play_context_init(m_context *ctx, const char *filename);
-
-static void play_context_free(m_context *ctx);
-
-static void set_current_row_filename(GtkListBoxRow *row);
-
-static void keep_above_callback(GtkToggleButton *togglebutton, gpointer user_data);
-
-static void shuffle_callback(GtkToggleButton *togglebutton, gpointer user_data);
-
-static void add_to_playlist_callback(GtkMenuItem *menuitem, gpointer user_data);
-
-static void open_folder_callback(GtkMenuItem *menuitem, gpointer user_data);
-
-static void save_playlist_callback(GtkMenuItem *menuitem, gpointer user_data);
-
-static void open_playlist_callback(GtkMenuItem *menuitem, gpointer user_data);
-
-static void clear_playlist_callback(GtkMenuItem *menuitem, gpointer user_data);
-
-static void play_next(int reverse, int force);
-
-static void stop_play_th();
-
-static void shuffle_playlist();
-
-static void reset_widgets();
-
-static int get_id3_data(m_context *ctx);
-
-static void set_current_filename_title();
-
-static void set_default_album_art();
-
-static void get_file_album_art();
-
-static void highlight_row(int index);
-
-static void unhighlight_row(int index);
-
-static void drag_playlist_row(GtkWidget *widget, GdkDragContext *context, gpointer user_data);
-
-static void playlist_row_drag_data_get(GtkWidget *widget, GdkDragContext *context, GtkSelectionData *data, guint info, guint time, gpointer user_data);
-
-static void playlist_row_drag_data_received(GtkWidget *widget, GdkDragContext *context, int x, int y, GtkSelectionData *data, guint info, guint time, gpointer user_data);
-
-static void playlist_row_drag_file_received(GtkWidget *widget, GdkDragContext *context, int x, int y, GtkSelectionData *data, guint info, guint time, gpointer user_data);
-
-static void save_playlist(const char *filename);
-
-static void clear_playlist();
-
-static void clear_shuffle();
-
-static int get_totatl_count();
-
-static char *seconds_to_str(int seconds);
-
-static double min(double v_1, double v_2);
-
-static double max(double v_1, double v_2);

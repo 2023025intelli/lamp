@@ -1,10 +1,25 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.20)
 project(lamp C)
 
 set(CMAKE_C_STANDARD 99)
 
+set(SRC main.c lamp.h playlistitem.c playlistitem.h utils.c utils.h playback.c playback.h constants.h data_types.h)
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
+find_package(SDL2 REQUIRED)
+
+pkg_check_modules(
+        LIBAV REQUIRED IMPORTED_TARGET
+        libavdevice
+        libavfilter
+        libavformat
+        libavcodec
+        libswresample
+        libswscale
+        libavutil
+)
 
 find_program(GLIB_COMPILE_RESOURCES NAMES glib-compile-resources REQUIRED)
 
@@ -36,33 +51,31 @@ add_custom_target(
 )
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
-pkg_check_modules(LIBAO REQUIRED ao)
-pkg_check_modules(MPG123 REQUIRED libmpg123)
+pkg_check_modules(GTK4 REQUIRED gtk4)
 
-include_directories(${GTK3_INCLUDE_DIRS})
-link_directories(${GTK3_LIBRARY_DIRS})
-link_directories(${LIBAO_LIBRARY_DIRS})
-link_directories(${MPG123_LIBRARY_DIRS})
+include_directories(${GTK4_INCLUDE_DIRS})
+include_directories(${SDL2_INCLUDE_DIRS})
+include_directories(${LIBAV_INCLUDE_DIRS})
 
-set(SOURCE_FILES main.c lamp.h)
+link_directories(${LIBAV_LIBRARY_DIRS})
+link_directories(${GTK4_LIBRARY_DIRS})
 
-add_executable(lamp ${SOURCE_FILES} ${CMAKE_CURRENT_BINARY_DIR}/${GRESOURCE_C})
+add_executable(${PROJECT_NAME} ${SRC} ${CMAKE_CURRENT_BINARY_DIR}/${GRESOURCE_C})
 
 set_source_files_properties(
         ${CMAKE_CURRENT_BINARY_DIR}/${GRESOURCE_C}
         PROPERTIES GENERATED TRUE
 )
 
-add_dependencies(lamp resources)
+add_dependencies(${PROJECT_NAME} resources)
 
-add_definitions(${GTK3_CFLAGS_OTHER})
-target_link_libraries(lamp ${GTK3_LIBRARIES})
-target_link_libraries(lamp ${LIBAO_LIBRARIES})
-target_link_libraries(lamp ${MPG123_LIBRARIES})
-target_link_libraries(lamp ${CMAKE_THREAD_LIBS_INIT})
+add_definitions(${GTK4_CFLAGS_OTHER})
+target_link_libraries(${PROJECT_NAME} ${GTK4_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS})
+target_link_libraries(${PROJECT_NAME} ${LIBAV_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} m)
 
-# copy glade data to build
-add_custom_command(TARGET lamp PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/glade/ ${CMAKE_BINARY_DIR}/glade/
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res/ ${CMAKE_BINARY_DIR}/res/)
+# copy res data to build
+add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res/ ${CMAKE_BINARY_DIR}/res/)
