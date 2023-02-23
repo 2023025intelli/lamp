@@ -30,6 +30,8 @@ void appOpen(GApplication *application, GFile **files, gint n_files, const gchar
 
 void play(AppState *state);
 
+void playNext(AppState *state, gboolean force);
+
 void playThreadStop(AppState *state);
 
 void playThreadCreate(AppState *state);
@@ -46,8 +48,6 @@ void nextBtnCB(GtkButton *self, gpointer user_data);
 
 void prevBtnCB(GtkButton *self, gpointer user_data);
 
-int setNextItem(AppState *state, gboolean backwards);
-
 void pauseBtnCB(GtkButton *self, gpointer user_data);
 
 void volumeChangedCb(GtkRange *self, gpointer user_data);
@@ -55,6 +55,8 @@ void volumeChangedCb(GtkRange *self, gpointer user_data);
 void repeatTglCB(GtkToggleButton *self, gpointer user_data);
 
 void shuffleTglCB(GtkToggleButton *self, gpointer user_data);
+
+int setNextItem(AppState *state, gboolean backwards, gboolean force);
 
 void playlistitemActivate(GtkListView *list, guint position, AppState *state);
 

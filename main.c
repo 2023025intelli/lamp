@@ -115,7 +115,7 @@ int stateObserver(gpointer data) {
     AppState *state = (AppState *) data;
     if (!state->playing) { return FALSE; }
     if (state->finished) {
-        nextBtnCB(NULL, state);
+        playNext(state, FALSE);
         return FALSE;
     }
     if (state->paused) { return TRUE; }
@@ -196,18 +196,22 @@ void pauseBtnCB(GtkButton *self, gpointer user_data) {
     SDL_PauseAudioDevice(state->audio_ctx->audio_device, state->paused);
 }
 
-void nextBtnCB(GtkButton *self, gpointer user_data) {
-    AppState *state = (AppState *) user_data;
-    if (setNextItem(state, FALSE) && state->repeat != REPEAT_ALL) {
+void playNext(AppState *state, gboolean force) {
+    if (setNextItem(state, FALSE, force) && state->repeat != REPEAT_ALL) {
         playThreadStop(state);
         return;
     }
     playlistitemActivate(GTK_LIST_VIEW(state->widgets->playlist), state->current_index, state);
 }
 
+void nextBtnCB(GtkButton *self, gpointer user_data) {
+    AppState *state = (AppState *) user_data;
+    playNext(state, TRUE);
+}
+
 void prevBtnCB(GtkButton *self, gpointer user_data) {
     AppState *state = (AppState *) user_data;
-    if (setNextItem(state, TRUE) && state->repeat != REPEAT_ALL) {
+    if (setNextItem(state, TRUE, TRUE) && state->repeat != REPEAT_ALL) {
         playThreadStop(state);
         return;
     }
@@ -215,12 +219,12 @@ void prevBtnCB(GtkButton *self, gpointer user_data) {
 }
 
 // Returns TRUE if exceeds the playlist items count, else FALSE
-int setNextItem(AppState *state, gboolean backwards) {
+int setNextItem(AppState *state, gboolean backwards, gboolean force) {
     int n_items = (int) g_list_model_get_n_items(G_LIST_MODEL(state->widgets->playlistStore));
     int step = backwards ? -1 : 1;
     int *current = NULL;
     gboolean exceed = FALSE;
-    if (state->repeat == REPEAT_ONE) {
+    if (!force && state->repeat == REPEAT_ONE) {
         return exceed;
     }
     current = state->shuffle_arr ? &state->shuffle_current : &state->current_index;

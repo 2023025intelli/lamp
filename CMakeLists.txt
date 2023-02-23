@@ -7,7 +7,6 @@ set(SRC main.c lamp.h playlistitem.c playlistitem.h utils.c utils.h playback.c p
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(PkgConfig REQUIRED)
-find_package(Threads REQUIRED)
 find_package(SDL2 REQUIRED)
 
 pkg_check_modules(
@@ -50,7 +49,6 @@ add_custom_target(
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${GRESOURCE_C}
 )
 
-find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK4 REQUIRED gtk4)
 
 include_directories(${GTK4_INCLUDE_DIRS})
@@ -71,11 +69,8 @@ add_dependencies(${PROJECT_NAME} resources)
 
 add_definitions(${GTK4_CFLAGS_OTHER})
 target_link_libraries(${PROJECT_NAME} ${GTK4_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS})
 target_link_libraries(${PROJECT_NAME} ${LIBAV_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} m)
 
 # copy res data to build
 add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res/ ${CMAKE_BINARY_DIR}/res/)

@@ -1,14 +1,24 @@
-# glib-compile-resources --target=resources.c --generate-source resources.xml
-# gcc -o lamp main.c resources.c `pkg-config --cflags --libs gtk+-3.0` -lmpg123 -lao
-
 CC ?= gcc
+
+FFMPEG_LIBS = libavdevice \
+              libavfilter \
+              libavformat \
+              libavcodec \
+              libswresample \
+              libswscale \
+              libavutil \
+
 PKGCONFIG = $(shell which pkg-config)
-CFLAGS = $(shell $(PKGCONFIG) --cflags gtk+-3.0)
-LIBS = $(shell $(PKGCONFIG) --libs gtk+-3.0)
-LIBS += -lpthread -lao -lmpg123
+CFLAGS := $(shell pkg-config --cflags $(FFMPEG_LIBS)) $(CFLAGS)
+CFLAGS += $(shell $(PKGCONFIG) --cflags gtk4)
+CFLAGS += $(shell $(PKGCONFIG) --cflags sdl2)
+LIBS := $(shell pkg-config --libs $(FFMPEG_LIBS)) $(LIBS)
+LIBS += $(shell $(PKGCONFIG) --libs gtk4)
+LIBS += $(shell $(PKGCONFIG) --libs sdl2)
+
 GLIB_COMPILE_RESOURCES = glib-compile-resources
 
-SRC = main.c
+SRC = main.c playback.c playlistitem.c utils.c
 GEN_SRC = resources.c
 
 OBJDIR := objdir
