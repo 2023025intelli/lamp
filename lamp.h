@@ -60,7 +60,7 @@ int setNextItem(AppState *state, gboolean backwards, gboolean force);
 
 void playlistitemActivate(GtkListView *list, guint position, AppState *state);
 
-void playlistitemActivateCb(GtkListView *list, guint position, gpointer unused);
+void playlistitemActivateCb(GtkListView *list, guint position, gpointer user_data);
 
 gboolean positionChangedCb(GtkRange *self, GtkScrollType *scroll, gdouble value, gpointer user_data);
 

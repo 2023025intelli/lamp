@@ -353,7 +353,7 @@ static int audioDecodeFrame(AppState *state, uint8_t *audio_buf, int buf_size) {
             if (ret == AVERROR(EAGAIN)) {
                 ret = 0;
             }
-            if (ret == 0 /* check if packet is valid */) {
+            if (ret == 0) {
                 ret = avcodec_send_packet(aCodecCtx, (*pkt_list)->pkt);
             }
             if (ret == AVERROR(EAGAIN)) {

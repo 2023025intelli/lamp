@@ -1,6 +1,6 @@
 ## LAMP Audio Player.
 
-### Depends on *gtk4* and *SDL2*.
+### Depends on *gtk4*, *libav* and *SDL2*.
 
 ### Run *make* command to build project.
 

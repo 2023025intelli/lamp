@@ -127,13 +127,14 @@ int stateObserver(gpointer data) {
  * Playback Functions
 *********************************************************/
 
-void playlistitemActivateCb(GtkListView *list, guint position, gpointer unused) {
-    AppState *state = (AppState *) unused;
+void playlistitemActivateCb(GtkListView *list, guint position, gpointer user_data) {
+    AppState *state = (AppState *) user_data;
     playlistitemActivate(list, position, state);
 }
 
 void playlistitemActivate(GtkListView *list, guint position, AppState *state) {
     PlaylistItem *item = g_list_model_get_item(G_LIST_MODEL(gtk_list_view_get_model(list)), position);
+    if (!item) { return; }
     state->current_index = (int) position;
     state->current_file = item->filePath;
     if (state->audio_ctx != NULL) playThreadStop(state);
@@ -349,11 +350,13 @@ void playlistClear(GSimpleAction *action, GVariant *parameter, gpointer data) {
 }
 
 void playlistitemBindCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data) {
-//    AppState *state = (AppState *) user_data;
+    // AppState *state = (AppState *) user_data;
     GtkWidget *image = gtk_widget_get_first_child(gtk_list_item_get_child(list_item));
     GtkWidget *label = gtk_widget_get_next_sibling(image);
     PlaylistItem *item = gtk_list_item_get_item(list_item);
-//    if (setPictureToWidget(item->filePath, image, PREVIEW_IMAGE_WIDTH, PREVIEW_IMAGE_WIDTH) != 0) {}
+//    if (setPictureToWidget(item->filePath, image, PREVIEW_IMAGE_WIDTH, PREVIEW_IMAGE_WIDTH) != 0) {
+//        setDefaultImage(image);
+//    } // it works,but it is freezeng a little.
     setDefaultImage(image);
     gtk_label_set_label(GTK_LABEL(label), item->name);
 }
@@ -485,7 +488,7 @@ void updateUI(AppState *state) {
         gtk_label_set_text(GTK_LABEL(widgets->artistLbl), tag->value);
     }
     gtk_label_set_text(GTK_LABEL(state->widgets->positionLbl), "0:00");
-//    setPictureToWidget(state->current_file, state->widgets->coverImg, ALBUM_ART_WIDTH, ALBUM_ART_WIDTH);
+    setPictureToWidget(state->current_file, state->widgets->coverImg, ALBUM_ART_WIDTH, ALBUM_ART_WIDTH);
 }
 
 void setDefaultImage(GtkWidget *image) {
@@ -510,10 +513,9 @@ int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int h
         gdk_pixbuf_loader_write(loader, album_art->data, album_art->size, NULL);
         pix_buf = gdk_pixbuf_loader_get_pixbuf(loader);
         gtk_image_set_from_pixbuf(GTK_IMAGE(widget), pix_buf);
-        g_object_unref(pix_buf);
         gdk_pixbuf_loader_close(loader, NULL);
         g_object_unref(loader);
-        av_packet_unref(album_art);
+        av_packet_free(&album_art);
         return 0;
     }
     return 1;

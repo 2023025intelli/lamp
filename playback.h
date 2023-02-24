@@ -7,7 +7,7 @@
 
 #define SDL_AUDIO_BUFFER_SIZE 1024
 #define MAX_AUDIO_FRAME_SIZE 192000
-#define PACKET_WAIT_TIME_MS 10
+#define PACKET_WAIT_TIME_MS 20
 
 static void packetQueueInit(PacketQueue *q);
 
