@@ -13,8 +13,12 @@ int strCompare(const char *str1, const char *str2) {
     return *str1 - *str2;
 }
 
-char *seconds_to_str(int seconds) {
+char *secondsToStr(int seconds) {
     char *str = malloc(sizeof(char) * 24);
     sprintf(str, "%d:%02d", seconds / 60, seconds % 60);
     return str;
+}
+
+int isBetween(double value, double lower, double upper) {
+    return value > lower ? (value < upper ? 1 : 0) : 0;
 }

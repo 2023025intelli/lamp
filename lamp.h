@@ -24,6 +24,8 @@ void appActivate(GApplication *app, gpointer user_data);
 
 void appOpen(GApplication *application, GFile **files, gint n_files, const gchar *hint, gpointer user_data);
 
+gboolean keypressHandler(GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModifierType state, gpointer user_data);
+
 /*********************************************************
  * Playback Functions
 *********************************************************/
@@ -102,15 +104,17 @@ void setupUI(AppState *state);
 
 void resetUI(AppState *state);
 
+void setSizes(AppState *state);
+
 void updateUI(AppState *state);
 
 void setPositionStr(AppState *state);
 
 void setDefaultImage(GtkWidget *image);
 
-void playlistitemSetupCb(GtkListItemFactory *factory, GtkListItem *list_item);
-
 int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int height);
+
+void playlistitemSetupCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data);
 
 //guint create_generic_signal(const gchar *name);
 

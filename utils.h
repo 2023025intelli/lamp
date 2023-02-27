@@ -5,6 +5,8 @@ int strInArray(const char *str, char *arr[], int lenght);
 
 int strCompare(const char *str1, const char *str2);
 
-char *seconds_to_str(int seconds);
+char *secondsToStr(int seconds);
+
+int isBetween(double value, double lower, double upper);
 
 #endif //LAMP4_UTILS_H

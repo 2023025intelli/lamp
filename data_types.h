@@ -56,8 +56,10 @@ typedef struct {
     GtkWidget *nextBtn;
     GtkWidget *playlistLbl;
     GtkWidget *playlist;
+    GtkWidget *playlistScr;
     GListStore *playlistStore;
     GtkFileFilter *audioFilter;
+    GtkSingleSelection *selection_model;
     /* Icons */
     GtkWidget *repeatImg;
     GtkWidget *shuffleImg;
@@ -73,14 +75,18 @@ typedef struct AppState {
     gboolean paused;
     gboolean playing;
     gboolean finished;
+    int width;
+    int height;
     int repeat;
     int volume;
+    int art_size;
+    int preview_size;
     int *shuffle_arr;
-    int shuffle_current;
     int current_index;
     char *current_file;
-    AppWidgets *widgets;
+    int shuffle_current;
     GApplication *app;
+    AppWidgets *widgets;
     AudioContext *audio_ctx;
 } AppState;
 
