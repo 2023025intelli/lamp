@@ -111,8 +111,7 @@ int playAudio(AppState *state, const char *filename) {
     audio_ctx->want->callback = audioCallback;
     audio_ctx->want->userdata = state;
 
-    if (!(audio_ctx->audio_device = SDL_OpenAudioDevice(NULL, 0, audio_ctx->want, audio_ctx->have,
-                                                        SDL_AUDIO_ALLOW_FORMAT_CHANGE))) {
+    if (!(audio_ctx->audio_device = SDL_OpenAudioDevice(NULL, 0, audio_ctx->want, audio_ctx->have, SDL_AUDIO_ALLOW_FORMAT_CHANGE))) {
         printf("ERROR: Can't open audio device.\n");
         return 1;
     }
@@ -385,12 +384,12 @@ static int audioDecodeFrame(AppState *state, uint8_t *audio_buf, int buf_size) {
 
                 // audio resampling
                 data_size = audioResample(
-                        state,
-                        avFrame,
-                        AV_SAMPLE_FMT_S16,
-                        aCodecCtx->ch_layout.nb_channels,
-                        aCodecCtx->sample_rate,
-                        audio_buf
+                    state,
+                    avFrame,
+                    AV_SAMPLE_FMT_S16,
+                    aCodecCtx->ch_layout.nb_channels,
+                    aCodecCtx->sample_rate,
+                    audio_buf
                 );
 
                 assert(data_size <= buf_size);
@@ -421,12 +420,12 @@ static int audioDecodeFrame(AppState *state, uint8_t *audio_buf, int buf_size) {
 }
 
 static int audioResample(
-        AppState *state,
-        AVFrame *decoded_audio_frame,
-        enum AVSampleFormat out_sample_fmt,
-        int out_channels,
-        int out_sample_rate,
-        uint8_t *out_buf
+    AppState *state,
+    AVFrame *decoded_audio_frame,
+    enum AVSampleFormat out_sample_fmt,
+    int out_channels,
+    int out_sample_rate,
+    uint8_t *out_buf
 ) {
     if (!state->playing) {
         return -1;
@@ -483,50 +482,50 @@ static int audioResample(
 
     // Set SwrContext parameters for resampling
     av_opt_set_int(   // 3
-            swr_ctx,
-            "in_channel_layout",
-            in_channel_layout,
-            0
+        swr_ctx,
+        "in_channel_layout",
+        in_channel_layout,
+        0
     );
 
     // Set SwrContext parameters for resampling
     av_opt_set_int(
-            swr_ctx,
-            "in_sample_rate",
-            audio_decode_ctx->sample_rate,
-            0
+        swr_ctx,
+        "in_sample_rate",
+        audio_decode_ctx->sample_rate,
+        0
     );
 
     // Set SwrContext parameters for resampling
     av_opt_set_sample_fmt(
-            swr_ctx,
-            "in_sample_fmt",
-            audio_decode_ctx->sample_fmt,
-            0
+        swr_ctx,
+        "in_sample_fmt",
+        audio_decode_ctx->sample_fmt,
+        0
     );
 
     // Set SwrContext parameters for resampling
     av_opt_set_int(
-            swr_ctx,
-            "out_channel_layout",
-            out_channel_layout,
-            0
+        swr_ctx,
+        "out_channel_layout",
+        out_channel_layout,
+        0
     );
 
     // Set SwrContext parameters for resampling
     av_opt_set_int(
-            swr_ctx,
-            "out_sample_rate",
-            out_sample_rate,
-            0
+        swr_ctx,
+        "out_sample_rate",
+        out_sample_rate,
+        0
     );
 
     // Set SwrContext parameters for resampling
     av_opt_set_sample_fmt(
-            swr_ctx,
-            "out_sample_fmt",
-            out_sample_fmt,
-            0
+        swr_ctx,
+        "out_sample_fmt",
+        out_sample_fmt,
+        0
     );
 
     // Once all values have been set for the SwrContext, it must be initialized
@@ -538,10 +537,10 @@ static int audioResample(
     }
 
     max_out_nb_samples = out_nb_samples = av_rescale_rnd(
-            in_nb_samples,
-            out_sample_rate,
-            audio_decode_ctx->sample_rate,
-            AV_ROUND_UP
+        in_nb_samples,
+        out_sample_rate,
+        audio_decode_ctx->sample_rate,
+        AV_ROUND_UP
     );
 
     // check rescaling was successful
@@ -555,12 +554,12 @@ static int audioResample(
     out_nb_channels = audio_decode_ctx->ch_layout.nb_channels;
 
     ret = av_samples_alloc_array_and_samples(
-            &resampled_data,
-            &out_linesize,
-            out_nb_channels,
-            out_nb_samples,
-            out_sample_fmt,
-            0
+        &resampled_data,
+        &out_linesize,
+        out_nb_channels,
+        out_nb_samples,
+        out_sample_fmt,
+        0
     );
 
     if (ret < 0) {
@@ -570,10 +569,10 @@ static int audioResample(
 
     // retrieve output samples number taking into account the progressive delay
     out_nb_samples = av_rescale_rnd(
-            swr_get_delay(swr_ctx, audio_decode_ctx->sample_rate) + in_nb_samples,
-            out_sample_rate,
-            audio_decode_ctx->sample_rate,
-            AV_ROUND_UP
+        swr_get_delay(swr_ctx, audio_decode_ctx->sample_rate) + in_nb_samples,
+        out_sample_rate,
+        audio_decode_ctx->sample_rate,
+        AV_ROUND_UP
     );
 
     // check output samples number was correctly retrieved
@@ -588,12 +587,12 @@ static int audioResample(
 
         // Allocate a samples buffer for out_nb_samples samples
         ret = av_samples_alloc(
-                resampled_data,
-                &out_linesize,
-                out_nb_channels,
-                out_nb_samples,
-                out_sample_fmt,
-                1
+            resampled_data,
+            &out_linesize,
+            out_nb_channels,
+            out_nb_samples,
+            out_sample_fmt,
+            1
         );
 
         // check samples buffer correctly allocated
@@ -608,11 +607,11 @@ static int audioResample(
     if (swr_ctx) {
         // do the actual audio data resampling
         ret = swr_convert(
-                swr_ctx,
-                resampled_data,
-                out_nb_samples,
-                (const uint8_t **) decoded_audio_frame->data,
-                decoded_audio_frame->nb_samples
+            swr_ctx,
+            resampled_data,
+            out_nb_samples,
+            (const uint8_t **) decoded_audio_frame->data,
+            decoded_audio_frame->nb_samples
         );
 
         // check audio conversion was successful
@@ -623,11 +622,11 @@ static int audioResample(
 
         // Get the required buffer size for the given audio parameters
         resampled_data_size = av_samples_get_buffer_size(
-                &out_linesize,
-                out_nb_channels,
-                ret,
-                out_sample_fmt,
-                1
+            &out_linesize,
+            out_nb_channels,
+            ret,
+            out_sample_fmt,
+            1
         );
 
         // check audio buffer size

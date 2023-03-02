@@ -23,13 +23,8 @@
 }
 
 .highlight-row {
-    background-color: #366bde;
-    color: #ffffff;
-}
-
-.drag-row {
-    background-color: #4876d5;
-    color: #ffffff;
+    background-color: #cccccc;
+    color: #000000;
 }
 
 .rounded {

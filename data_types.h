@@ -14,21 +14,21 @@ typedef struct PacketList {
 } PacketList;
 
 typedef struct PacketQueue {
+    int size;
+    int nb_packets;
     PacketList *first_pkt;
     PacketList *last_pkt;
     PacketList *current;
-    int nb_packets;
-    int size;
     SDL_mutex *mutex;
     SDL_cond *cond;
 } PacketQueue;
 
 typedef struct AudioContext {
-    int audio_stream;
     int position;
-    AVFormatContext *format_ctx;
-    AVCodecContext *codec_ctx;
+    int audio_stream;
     AVCodec *audio_codec;
+    AVCodecContext *codec_ctx;
+    AVFormatContext *format_ctx;
     AVCodecParameters *codec_par;
     SDL_AudioDeviceID audio_device;
     SDL_AudioSpec *want, *have;
@@ -54,12 +54,13 @@ typedef struct {
     GtkWidget *playBtn;
     GtkWidget *pauseBtn;
     GtkWidget *nextBtn;
-    GtkWidget *playlistLbl;
+    GtkFileFilter *audioFilter;
+    /* Playlist */
     GtkWidget *playlist;
+    GtkWidget *playlistLbl;
     GtkWidget *playlistScr;
     GListStore *playlistStore;
-    GtkFileFilter *audioFilter;
-    GtkSingleSelection *selection_model;
+    GtkMultiSelection *selection_model;
     /* Icons */
     GtkWidget *repeatImg;
     GtkWidget *shuffleImg;
@@ -69,6 +70,8 @@ typedef struct {
     GtkWidget *playImg;
     GtkWidget *pauseImg;
     GtkWidget *nextImg;
+    /* Current list item */
+    GtkListItem *listItem;
 } AppWidgets;
 
 typedef struct AppState {
@@ -80,7 +83,6 @@ typedef struct AppState {
     int repeat;
     int volume;
     int art_size;
-    int preview_size;
     int *shuffle_arr;
     int current_index;
     char *current_file;

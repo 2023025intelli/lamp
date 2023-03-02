@@ -32,8 +32,6 @@ gboolean keypressHandler(GtkEventControllerKey *controller, guint keyval, guint 
 
 void play(AppState *state);
 
-void playNext(AppState *state, gboolean force);
-
 void playThreadStop(AppState *state);
 
 void playThreadCreate(AppState *state);
@@ -57,6 +55,8 @@ void volumeChangedCb(GtkRange *self, gpointer user_data);
 void repeatTglCB(GtkToggleButton *self, gpointer user_data);
 
 void shuffleTglCB(GtkToggleButton *self, gpointer user_data);
+
+void playNext(AppState *state, gboolean backward, gboolean force);
 
 int setNextItem(AppState *state, gboolean backwards, gboolean force);
 
@@ -96,6 +96,8 @@ void onPlaylistSaveCb(GtkNativeDialog *native, int response, gpointer user_data)
 
 void playlistitemBindCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data);
 
+void playlistitemUnbindCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data);
+
 /*********************************************************
  * User Interface Functions
 *********************************************************/
@@ -109,6 +111,8 @@ void setSizes(AppState *state);
 void updateUI(AppState *state);
 
 void setPositionStr(AppState *state);
+
+void updateHighlight(AppState *state);
 
 void setDefaultImage(GtkWidget *image);
 

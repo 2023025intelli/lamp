@@ -69,7 +69,6 @@ AppState *appStateCreate(GApplication *app) {
     state->width = WINDOW_WIDTH;
     state->height = WINDOW_HEIGHT;
     state->art_size = ALBUM_ART_WIDTH;
-    state->preview_size = PREVIEW_IMAGE_WIDTH;
     return state;
 }
 
@@ -115,7 +114,7 @@ int stateObserver(gpointer data) {
     AppState *state = (AppState *) data;
     if (!state->playing) { return FALSE; }
     if (state->finished) {
-        playNext(state, FALSE);
+        playNext(state, FALSE, FALSE);
         return FALSE;
     }
     if (state->paused) { return TRUE; }
@@ -125,9 +124,17 @@ int stateObserver(gpointer data) {
 
 gboolean keypressHandler(GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
     AppState *app_state = (AppState *) user_data;
+    GtkBitset *selected = NULL;
+    GtkBitsetIter iter;
+    guint val;
     if (keyval == GDK_KEY_Delete) {
-//        gtk_selection_model_get_selection(GTK_SELECTION_MODEL(app_state->widgets->selection_model));
+        selected = gtk_selection_model_get_selection(GTK_SELECTION_MODEL(app_state->widgets->selection_model));
+        gtk_bitset_iter_init_first(&iter, selected, &val);
+        for (; gtk_bitset_iter_is_valid(&iter); gtk_bitset_iter_next(&iter, &val)) {
+            g_list_store_remove(app_state->widgets->playlistStore, val);
+        }
     }
+    return TRUE;
 }
 
 /*********************************************************
@@ -145,6 +152,7 @@ void playlistitemActivate(GtkListView *list, guint position, AppState *state) {
     state->current_index = (int) position;
     state->current_file = item->filePath;
     if (state->audio_ctx != NULL) playThreadStop(state);
+    updateHighlight(state);
     playThreadCreate(state);
     g_timeout_add(UI_UPDATE_INTERVAL, stateObserver, state);
     g_object_unref(item);
@@ -204,50 +212,37 @@ void pauseBtnCB(GtkButton *self, gpointer user_data) {
     SDL_PauseAudioDevice(state->audio_ctx->audio_device, state->paused);
 }
 
-void playNext(AppState *state, gboolean force) {
-    gboolean exceeds = setNextItem(state, FALSE, force);
-    gtk_selection_model_select_item(GTK_SELECTION_MODEL(state->widgets->selection_model), state->current_index, TRUE);
+void playNext(AppState *state, gboolean backward, gboolean force) {
+    double position, page_size, item_position, item_size;
+    GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(state->widgets->playlistScr));
+    guint items_count = g_list_model_get_n_items(G_LIST_MODEL(state->widgets->playlistStore));
+    gboolean exceeds = setNextItem(state, backward, force);
+    if (force) {
+        gtk_selection_model_select_item(GTK_SELECTION_MODEL(state->widgets->selection_model), state->current_index, TRUE);
+        position = gtk_adjustment_get_value(adj);
+        page_size = gtk_adjustment_get_page_size(adj);
+        item_size = gtk_adjustment_get_upper(adj) / items_count;
+        item_position = item_size * state->current_index;
+        if (!isBetween(item_position, position, position + page_size - item_size)) {
+            gtk_adjustment_set_value(adj, item_position - item_size);
+        }
+    }
     if (exceeds && state->repeat != REPEAT_ALL) {
         playThreadStop(state);
         return;
     }
+    if (!state->playing) { return; }
     playlistitemActivate(GTK_LIST_VIEW(state->widgets->playlist), state->current_index, state);
 }
 
 void nextBtnCB(GtkButton *self, gpointer user_data) {
     AppState *state = (AppState *) user_data;
-    GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(state->widgets->playlistScr));
-    double position, page_size, item_position, item_size;
-    guint items_count = g_list_model_get_n_items(G_LIST_MODEL(state->widgets->playlistStore));
-    playNext(state, TRUE);
-    position = gtk_adjustment_get_value(adj);
-    page_size = gtk_adjustment_get_page_size(adj);
-    item_size = gtk_adjustment_get_upper(adj) / items_count;
-    item_position = item_size * state->current_index;
-    if (!isBetween(item_position, position, position + page_size)) {
-        gtk_adjustment_set_value(adj, item_position);
-    }
+    playNext(state, FALSE, TRUE);
 }
 
 void prevBtnCB(GtkButton *self, gpointer user_data) {
     AppState *state = (AppState *) user_data;
-    GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(state->widgets->playlistScr));
-    double position, page_size, item_position, item_size;
-    guint items_count = g_list_model_get_n_items(G_LIST_MODEL(state->widgets->playlistStore));
-    gboolean exceeds = setNextItem(state, TRUE, TRUE);
-    gtk_selection_model_select_item(GTK_SELECTION_MODEL(state->widgets->selection_model), state->current_index, TRUE);
-    position = gtk_adjustment_get_value(adj);
-    page_size = gtk_adjustment_get_page_size(adj);
-    item_size = gtk_adjustment_get_upper(adj) / items_count;
-    item_position = item_size * state->current_index;
-    if (!isBetween(item_position, position, position + page_size)) {
-        gtk_adjustment_set_value(adj, item_position);
-    }
-    if (exceeds && state->repeat != REPEAT_ALL) {
-        playThreadStop(state);
-        return;
-    }
-    playlistitemActivate(GTK_LIST_VIEW(state->widgets->playlist), state->current_index, state);
+    playNext(state, TRUE, TRUE);
 }
 
 // Returns TRUE if exceeds the playlist items count, else FALSE
@@ -381,15 +376,28 @@ void playlistClear(GSimpleAction *action, GVariant *parameter, gpointer data) {
 }
 
 void playlistitemBindCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data) {
-    // AppState *state = (AppState *) user_data;
-    GtkWidget *image = gtk_widget_get_first_child(gtk_list_item_get_child(list_item));
-    GtkWidget *label = gtk_widget_get_next_sibling(image);
+    AppState *state = (AppState *) user_data;
+    GtkWidget *box = gtk_list_item_get_child(list_item);
+    GtkWidget *parent = gtk_widget_get_parent(box);
+    GtkWidget *label = gtk_widget_get_first_child(box);
+    GtkWidget *filepath = gtk_widget_get_next_sibling(label);
     PlaylistItem *item = gtk_list_item_get_item(list_item);
-//    if (setPictureToWidget(item->filePath, image, PREVIEW_IMAGE_WIDTH, PREVIEW_IMAGE_WIDTH) != 0) {
-//        setDefaultImage(image);
-//    } // works, but it is freezeng a little.
-    setDefaultImage(image);
     gtk_label_set_label(GTK_LABEL(label), item->name);
+    gtk_label_set_label(GTK_LABEL(filepath), item->filePath);
+    // set list item, so there is always one to push off from.
+    state->widgets->listItem = list_item;
+    if (state->current_index == gtk_list_item_get_position(list_item)) {
+        gtk_widget_add_css_class(parent, "highlight-row");
+    } else {
+        gtk_widget_remove_css_class(parent, "highlight-row");
+    }
+}
+
+void playlistitemUnbindCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data) {
+    AppState *state = (AppState *) user_data;
+    if (state->widgets->listItem == list_item) {
+        state->widgets->listItem = NULL;
+    }
 }
 
 void onFileAddCb(GtkNativeDialog *native, int response, gpointer user_data) {
@@ -432,6 +440,7 @@ void onFolderAddCb(GtkNativeDialog *native, int response, gpointer user_data) {
 void onPlaylistOpenCb(GtkNativeDialog *native, int response, gpointer user_data) {
     AppState *state = (AppState *) user_data;
     if (response == GTK_RESPONSE_ACCEPT) {
+        playlistClear(NULL, NULL, state);
         GtkFileChooser *chooser = GTK_FILE_CHOOSER(native);
         GFile *file = gtk_file_chooser_get_file(chooser);
         playlistLoad(g_file_get_path(file), state);
@@ -491,18 +500,15 @@ void setSizes(AppState *state) {
     if (r.width > 2500) {
         state->width = 540;
         state->height = 900;
-        state->art_size = 160;
-        state->preview_size = 80;
+        state->art_size = 180;
     } else if (r.width > 1800) {
         state->width = 480;
         state->height = 760;
-        state->art_size = 128;
-        state->preview_size = 64;
+        state->art_size = 144;
     } else if (r.width > 1300) {
         state->width = 400;
         state->height = 540;
-        state->art_size = 96;
-        state->preview_size = 56;
+        state->art_size = 128;
     }
 }
 
@@ -563,7 +569,6 @@ int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int h
     album_art = getAlbumArt(filename);
     if (album_art) {
         loader = gdk_pixbuf_loader_new();
-        gdk_pixbuf_loader_set_size(loader, width, height);
         gdk_pixbuf_loader_write(loader, album_art->data, album_art->size, NULL);
         pix_buf = gdk_pixbuf_loader_get_pixbuf(loader);
         gtk_image_set_from_pixbuf(GTK_IMAGE(widget), pix_buf);
@@ -575,27 +580,63 @@ int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int h
     return 1;
 }
 
+void updateHighlight(AppState *state) {
+    GtkWidget *item = NULL;
+    GtkWidget *tmp = NULL;
+    guint position = -1;
+    guint tmp_position = -1;
+    if (!state->widgets->listItem) { return; }
+    position = gtk_list_item_get_position(state->widgets->listItem);
+    item = gtk_widget_get_parent(gtk_list_item_get_child(state->widgets->listItem));
+    tmp = item;
+    tmp_position = position;
+    while (tmp) {
+        if (tmp_position == state->current_index) {
+            gtk_widget_add_css_class(tmp, "highlight-row");
+        } else {
+            gtk_widget_remove_css_class(tmp, "highlight-row");
+        }
+        tmp_position++;
+        tmp = gtk_widget_get_next_sibling(tmp);
+    }
+    tmp = item;
+    tmp_position = position;
+    while (tmp) {
+        if (tmp_position == state->current_index) {
+            gtk_widget_add_css_class(tmp, "highlight-row");
+        } else {
+            gtk_widget_remove_css_class(tmp, "highlight-row");
+        }
+        tmp_position--;
+        tmp = gtk_widget_get_prev_sibling(tmp);
+    }
+}
+
 void playlistitemSetupCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data) {
-    AppState *state = (AppState *) user_data;
-    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
-    GtkWidget *image = gtk_image_new();
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *label = gtk_label_new(NULL);
+    GtkWidget *filepath = gtk_label_new(NULL);
     PangoAttrList *nameAttrs = pango_attr_list_new();
+    PangoAttrList *pathAttrs = pango_attr_list_new();
+    gtk_label_set_xalign(GTK_LABEL(label), 0);
+    gtk_label_set_xalign(GTK_LABEL(filepath), 0);
     pango_attr_list_insert(nameAttrs, pango_attr_weight_new(PANGO_WEIGHT_BOLD));
     pango_attr_list_insert(nameAttrs, pango_attr_size_new(14 * PANGO_SCALE));
+    pango_attr_list_insert(pathAttrs, pango_attr_size_new(13 * PANGO_SCALE));
     pango_attr_list_insert(nameAttrs, pango_attr_family_new("Open Sans"));
     gtk_label_set_attributes(GTK_LABEL(label), nameAttrs);
+    gtk_label_set_attributes(GTK_LABEL(filepath), pathAttrs);
     pango_attr_list_unref(nameAttrs);
-    gtk_widget_set_margin_end(label, 12);
+    gtk_widget_set_margin_start(label, 20);
+    gtk_widget_set_margin_end(label, 16);
     gtk_widget_set_margin_top(label, 24);
-    gtk_widget_set_margin_bottom(label, 24);
-    gtk_widget_set_margin_start(image, 4);
-    gtk_widget_set_margin_top(image, 4);
-    gtk_widget_set_margin_bottom(image, 4);
-    gtk_widget_set_size_request(image, state->preview_size, state->preview_size);
+    gtk_widget_set_margin_start(filepath, 20);
+    gtk_widget_set_margin_end(filepath, 16);
+    gtk_widget_set_margin_bottom(filepath, 24);
     gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-    gtk_box_append(GTK_BOX(box), image);
+    gtk_label_set_ellipsize(GTK_LABEL(filepath), PANGO_ELLIPSIZE_END);
     gtk_box_append(GTK_BOX(box), label);
+    gtk_box_append(GTK_BOX(box), filepath);
     gtk_list_item_set_child(list_item, box);
 }
 
@@ -797,6 +838,7 @@ void setupUI(AppState *state) {
     GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
     g_signal_connect(factory, "setup", G_CALLBACK(playlistitemSetupCb), state);
     g_signal_connect(factory, "bind", G_CALLBACK(playlistitemBindCb), state);
+    g_signal_connect(factory, "unbind", G_CALLBACK(playlistitemUnbindCb), state);
     widgets->playlistScr = gtk_scrolled_window_new();
     widgets->selection_model = gtk_multi_selection_new(G_LIST_MODEL(widgets->playlistStore));
     widgets->playlist = gtk_list_view_new(GTK_SELECTION_MODEL(widgets->selection_model), factory);
