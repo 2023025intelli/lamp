@@ -1,3 +1,11 @@
+//
+//                            |                  |              |
+//    __|   _ \   __ \    __|  __|   _` |  __ \   __|   __|     __ \
+//   (     (   |  |   | \__ \  |    (   |  |   |  |   \__ \     | | |
+//  \___| \___/  _|  _| ____/ \__| \__,_| _|  _| \__| ____/ _| _| |_|
+//
+//
+
 #ifndef LAMP4_CONSTANTS_H
 #define LAMP4_CONSTANTS_H
 
@@ -8,7 +16,7 @@
 
 #define ALBUM_ART_WIDTH 128
 
-#define UI_UPDATE_INTERVAL 300
+#define UI_UPDATE_INTERVAL 200
 
 #define REPEAT_OFF 0
 #define REPEAT_ALL 1

@@ -1,3 +1,11 @@
+//
+//                    _)
+//   __ `__ \    _` |  |  __ \       __|
+//   |   |   |  (   |  |  |   |     (
+//  _|  _|  _| \__,_| _| _|  _| _| \___|
+//
+//
+
 #include "constants.h"
 #include "playback.h"
 #include "utils.h"
@@ -35,7 +43,7 @@ void activate(GApplication *app, gpointer user_data) {
     windowInit(state);
     setupUI(state);
     configureUI(state);
-    gtk_widget_show(state->widgets->win);
+    gtk_window_present(GTK_WINDOW(state->widgets->win));
 }
 
 void appActivate(GApplication *app, gpointer user_data) {
@@ -47,7 +55,7 @@ void appOpen(GApplication *application, GFile **files, gint n_files, const gchar
     AppWidgets *widgets = state->widgets;
     activate(application, state);
     for (int i = 0; i < n_files; ++i) {
-        playlistAddFile(widgets->playlistStore, files[i]);
+        playlistAddFile(widgets->playlistStore, files[i], state);
     }
     if (g_list_model_get_n_items(G_LIST_MODEL(widgets->playlistStore))) {
         playlistitemActivate(GTK_LIST_VIEW(widgets->playlist), 0, state);
@@ -64,6 +72,8 @@ AppWidgets *appWidgetsCreate() {
 AppState *appStateCreate(GApplication *app) {
     AppState *state = malloc(sizeof(AppState));
     memset(state, 0, sizeof(AppState));
+    state->settings = malloc(sizeof(Settings));
+    memset(state->settings, 0, sizeof(Settings));
     state->app = app;
     state->volume = DEFAULT_VOLUME;
     state->width = WINDOW_WIDTH;
@@ -75,7 +85,7 @@ AppState *appStateCreate(GApplication *app) {
 void configureUI(AppState *state) {
     AppWidgets *widgets = state->widgets;
     widgets->audioFilter = gtk_file_filter_new();
-    GtkEventControllerKey *key_event = gtk_event_controller_key_new();
+    GtkEventControllerKey *key_event = (GtkEventControllerKey *) gtk_event_controller_key_new();
     gtk_widget_add_controller(state->widgets->win, key_event);
     gtk_file_filter_set_name(widgets->audioFilter, "Audio Files");
     for (int i = 0; i < supportedMimeTypesCount; i++) {
@@ -92,6 +102,7 @@ void configureUI(AppState *state) {
     g_signal_connect(widgets->prevBtn, "clicked", G_CALLBACK(prevBtnCB), state);
     g_signal_connect(widgets->repeatTgl, "toggled", G_CALLBACK(repeatTglCB), state);
     g_signal_connect(widgets->shuffleTgl, "toggled", G_CALLBACK(shuffleTglCB), state);
+    g_signal_connect(widgets->positionTgl, "toggled", G_CALLBACK(timeRemainToggle), state);
 }
 
 GtkWidget *windowInit(AppState *state) {
@@ -110,8 +121,10 @@ GtkWidget *windowInit(AppState *state) {
     return win;
 }
 
-int stateObserver(gpointer data) {
-    AppState *state = (AppState *) data;
+// Periodically called function to update state.
+// It would be called repeatedly until returns FALSE.
+gboolean stateObserver(gpointer user_data) {
+    AppState *state = (AppState *) user_data;
     if (!state->playing) { return FALSE; }
     if (state->finished) {
         playNext(state, FALSE, FALSE);
@@ -128,7 +141,7 @@ gboolean keypressHandler(GtkEventControllerKey *controller, guint keyval, guint 
     GtkBitsetIter iter;
     guint val;
     if (keyval == GDK_KEY_Delete) {
-        selected = gtk_selection_model_get_selection(GTK_SELECTION_MODEL(app_state->widgets->selection_model));
+        selected = gtk_selection_model_get_selection(GTK_SELECTION_MODEL(app_state->widgets->selectionModel));
         gtk_bitset_iter_init_first(&iter, selected, &val);
         for (; gtk_bitset_iter_is_valid(&iter); gtk_bitset_iter_next(&iter, &val)) {
             g_list_store_remove(app_state->widgets->playlistStore, val);
@@ -149,10 +162,11 @@ void playlistitemActivateCb(GtkListView *list, guint position, gpointer user_dat
 void playlistitemActivate(GtkListView *list, guint position, AppState *state) {
     PlaylistItem *item = g_list_model_get_item(G_LIST_MODEL(gtk_list_view_get_model(list)), position);
     if (!item) { return; }
+    unHighlightRow(state, state->current_index);
     state->current_index = (int) position;
     state->current_file = item->filePath;
     if (state->audio_ctx != NULL) playThreadStop(state);
-    updateHighlight(state);
+    highlightRow(state, position);
     playThreadCreate(state);
     g_timeout_add(UI_UPDATE_INTERVAL, stateObserver, state);
     g_object_unref(item);
@@ -216,9 +230,10 @@ void playNext(AppState *state, gboolean backward, gboolean force) {
     double position, page_size, item_position, item_size;
     GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(state->widgets->playlistScr));
     guint items_count = g_list_model_get_n_items(G_LIST_MODEL(state->widgets->playlistStore));
+    unHighlightRow(state, state->current_index);
     gboolean exceeds = setNextItem(state, backward, force);
     if (force) {
-        gtk_selection_model_select_item(GTK_SELECTION_MODEL(state->widgets->selection_model), state->current_index, TRUE);
+        gtk_selection_model_select_item(GTK_SELECTION_MODEL(state->widgets->selectionModel), state->current_index, TRUE);
         position = gtk_adjustment_get_value(adj);
         page_size = gtk_adjustment_get_page_size(adj);
         item_size = gtk_adjustment_get_upper(adj) / items_count;
@@ -278,18 +293,16 @@ void repeatTglCB(GtkToggleButton *self, gpointer user_data) {
         }
         case REPEAT_ALL: {
             gtk_image_clear(GTK_IMAGE(state->widgets->repeatImg));
-            gtk_image_set_from_icon_name(
-                GTK_IMAGE(state->widgets->repeatImg),
-                "media-playlist-repeat-song-symbolic");
+            gtk_image_set_from_icon_name(GTK_IMAGE(state->widgets->repeatImg), "media-playlist-repeat-song-symbolic");
+//            gtk_image_set_from_resource(GTK_IMAGE(state->widgets->repeatImg), "/res/icon/default/repeat-one.svg");
             gtk_toggle_button_set_active(self, TRUE);
             state->repeat = REPEAT_ONE;
             break;
         }
         case REPEAT_ONE: {
             gtk_image_clear(GTK_IMAGE(state->widgets->repeatImg));
-            gtk_image_set_from_icon_name(
-                GTK_IMAGE(state->widgets->repeatImg),
-                "media-playlist-repeat-symbolic");
+            gtk_image_set_from_icon_name(GTK_IMAGE(state->widgets->repeatImg), "media-playlist-repeat-symbolic");
+//            gtk_image_set_from_resource(GTK_IMAGE(state->widgets->repeatImg), "/res/icon/default/repeat-all.svg");
             state->repeat = REPEAT_OFF;
         }
         default: {
@@ -386,7 +399,7 @@ void playlistitemBindCb(GtkListItemFactory *factory, GtkListItem *list_item, gpo
     gtk_label_set_label(GTK_LABEL(filepath), item->filePath);
     // set list item, so there is always one to push off from.
     state->widgets->listItem = list_item;
-    if (state->current_index == gtk_list_item_get_position(list_item)) {
+    if (state->playing && state->current_index == item->index) {
         gtk_widget_add_css_class(parent, "highlight-row");
     } else {
         gtk_widget_remove_css_class(parent, "highlight-row");
@@ -407,7 +420,7 @@ void onFileAddCb(GtkNativeDialog *native, int response, gpointer user_data) {
         GtkFileChooser *chooser = GTK_FILE_CHOOSER(native);
         GListModel *list = gtk_file_chooser_get_files(chooser);
         for (int i = 0; (item = g_list_model_get_item(list, i)); i++) {
-            playlistAddFile(state->widgets->playlistStore, item);
+            playlistAddFile(state->widgets->playlistStore, item, state);
         }
         g_object_unref(list);
     }
@@ -427,7 +440,7 @@ void onFolderAddCb(GtkNativeDialog *native, int response, gpointer user_data) {
         while ((info = g_file_enumerator_next_file(iter, NULL, NULL))) {
             GFile *file = g_file_new_build_filename(g_file_get_path(folder), g_file_info_get_name(info), NULL);
             if (strInArray(g_file_info_get_content_type(info), (char **) supportedMimeTypes, supportedMimeTypesCount)) {
-                playlistAddFile(state->widgets->playlistStore, file);
+                playlistAddFile(state->widgets->playlistStore, file, state);
             }
             g_object_unref(file);
         }
@@ -459,10 +472,11 @@ void onPlaylistSaveCb(GtkNativeDialog *native, int response, gpointer user_data)
     g_object_unref(native);
 }
 
-void playlistAddFile(GListStore *playlist, GFile *file) {
+void playlistAddFile(GListStore *playlist, GFile *file, AppState *state) {
     PlaylistItem *item = g_object_new(PLAYLIST_ITEM_TYPE, NULL);
     strcpy(item->filePath, g_file_get_path(file));
     strcpy(item->name, g_file_get_basename(file));
+    item->index = state->index_counter++;
     g_list_store_append(playlist, item);
 }
 
@@ -523,18 +537,18 @@ void resetUI(AppState *state) {
     gtk_label_set_text(GTK_LABEL(widgets->durationLbl), "");
     gtk_label_set_text(GTK_LABEL(widgets->positionLbl), "");
     setDefaultImage(widgets->coverImg);
+    unHighlightRow(state, state->current_index);
 }
 
 void updateUI(AppState *state) {
     AppWidgets *widgets = state->widgets;
     AVDictionaryEntry *tag = NULL;
 
-    int seconds = audioGetDuration(state->audio_ctx->format_ctx);
-    if (seconds) {
-        gtk_range_set_range(GTK_RANGE(widgets->positionSld), 0, seconds);
+    if (state->audio_ctx->duration) {
+        gtk_range_set_range(GTK_RANGE(widgets->positionSld), 0, state->audio_ctx->duration);
         gtk_widget_set_sensitive(widgets->positionSld, TRUE);
     }
-    char *duration_str = secondsToStr((int) seconds);
+    char *duration_str = secondsToStr((int) state->audio_ctx->duration, FALSE);
     gtk_label_set_text(GTK_LABEL(widgets->durationLbl), duration_str);
     free(duration_str);
 
@@ -556,10 +570,15 @@ void setDefaultImage(GtkWidget *image) {
 }
 
 void setPositionStr(AppState *state) {
-    char *position_str = secondsToStr(state->audio_ctx->position);
+    guint position = state->settings->time_remain ? state->audio_ctx->duration - state->audio_ctx->position : state->audio_ctx->position;
+    char *position_str = secondsToStr((int) position, state->settings->time_remain);
     gtk_range_set_value(GTK_RANGE(state->widgets->positionSld), state->audio_ctx->position);
     gtk_label_set_text(GTK_LABEL(state->widgets->positionLbl), position_str);
     free(position_str);
+}
+
+void timeRemainToggle(GtkToggleButton *self, AppState *state) {
+    state->settings->time_remain = !state->settings->time_remain;
 }
 
 int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int height) {
@@ -580,35 +599,37 @@ int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int h
     return 1;
 }
 
-void updateHighlight(AppState *state) {
-    GtkWidget *item = NULL;
-    GtkWidget *tmp = NULL;
-    guint position = -1;
-    guint tmp_position = -1;
-    if (!state->widgets->listItem) { return; }
-    position = gtk_list_item_get_position(state->widgets->listItem);
-    item = gtk_widget_get_parent(gtk_list_item_get_child(state->widgets->listItem));
-    tmp = item;
-    tmp_position = position;
-    while (tmp) {
-        if (tmp_position == state->current_index) {
-            gtk_widget_add_css_class(tmp, "highlight-row");
+GtkWidget *getRowAtPosition(AppState *state, guint position) {
+    if (!state->widgets->listItem) { return NULL; }
+    gboolean reverse = FALSE;
+    guint current = gtk_list_item_get_position(state->widgets->listItem);
+    GtkWidget *item = gtk_widget_get_parent(gtk_list_item_get_child(state->widgets->listItem));
+    reverse = position > current ? FALSE : TRUE;
+    while (item) {
+        if (current == position) {
+            return item;
+        } else if (reverse) {
+            item = gtk_widget_get_prev_sibling(item);
+            current--;
         } else {
-            gtk_widget_remove_css_class(tmp, "highlight-row");
+            item = gtk_widget_get_next_sibling(item);
+            current++;
         }
-        tmp_position++;
-        tmp = gtk_widget_get_next_sibling(tmp);
     }
-    tmp = item;
-    tmp_position = position;
-    while (tmp) {
-        if (tmp_position == state->current_index) {
-            gtk_widget_add_css_class(tmp, "highlight-row");
-        } else {
-            gtk_widget_remove_css_class(tmp, "highlight-row");
-        }
-        tmp_position--;
-        tmp = gtk_widget_get_prev_sibling(tmp);
+    return NULL;
+}
+
+void highlightRow(AppState *state, guint position) {
+    GtkWidget *item = NULL;
+    if ((item = getRowAtPosition(state, position))) {
+        gtk_widget_add_css_class(item, "highlight-row");
+    }
+}
+
+void unHighlightRow(AppState *state, guint position) {
+    GtkWidget *item = NULL;
+    if ((item = getRowAtPosition(state, position))) {
+        gtk_widget_remove_css_class(item, "highlight-row");
     }
 }
 
@@ -621,7 +642,7 @@ void playlistitemSetupCb(GtkListItemFactory *factory, GtkListItem *list_item, gp
     gtk_label_set_xalign(GTK_LABEL(label), 0);
     gtk_label_set_xalign(GTK_LABEL(filepath), 0);
     pango_attr_list_insert(nameAttrs, pango_attr_weight_new(PANGO_WEIGHT_BOLD));
-    pango_attr_list_insert(nameAttrs, pango_attr_size_new(14 * PANGO_SCALE));
+    pango_attr_list_insert(nameAttrs, pango_attr_size_new(15 * PANGO_SCALE));
     pango_attr_list_insert(pathAttrs, pango_attr_size_new(13 * PANGO_SCALE));
     pango_attr_list_insert(nameAttrs, pango_attr_family_new("Open Sans"));
     gtk_label_set_attributes(GTK_LABEL(label), nameAttrs);
@@ -642,6 +663,8 @@ void playlistitemSetupCb(GtkListItemFactory *factory, GtkListItem *list_item, gp
 
 void setupUI(AppState *state) {
     AppWidgets *widgets = state->widgets;
+    widgets->headerBar = gtk_header_bar_new();
+    gtk_window_set_titlebar(GTK_WINDOW(widgets->win), widgets->headerBar);
     GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_window_set_child(GTK_WINDOW(widgets->win), mainBox);
     /* Header Box */
@@ -732,11 +755,14 @@ void setupUI(AppState *state) {
     gtk_widget_set_sensitive(widgets->positionSld, FALSE);
     gtk_widget_set_hexpand(widgets->positionSld, TRUE);
     gtk_widget_add_css_class(widgets->positionSld, "sld-position");
+    widgets->positionTgl = gtk_toggle_button_new();
+    gtk_widget_add_css_class(widgets->positionTgl, "flat");
     widgets->positionLbl = gtk_label_new(NULL);
     gtk_label_set_width_chars(GTK_LABEL(widgets->positionLbl), 6);
     gtk_label_set_justify(GTK_LABEL(widgets->positionLbl), GTK_JUSTIFY_CENTER);
+    gtk_button_set_child(GTK_BUTTON(widgets->positionTgl), widgets->positionLbl);
     gtk_box_append(GTK_BOX(positionBox), widgets->positionSld);
-    gtk_box_append(GTK_BOX(positionBox), widgets->positionLbl);
+    gtk_box_append(GTK_BOX(positionBox), widgets->positionTgl);
     gtk_box_append(GTK_BOX(mainBox), positionBox);
     /* Control Panel */
     GtkWidget *controlGrid = gtk_grid_new();
@@ -794,7 +820,8 @@ void setupUI(AppState *state) {
     gtk_widget_set_margin_start(playlistBarBox, 12);
     gtk_widget_set_margin_end(playlistBarBox, 12);
     gtk_widget_set_margin_bottom(playlistBarBox, 8);
-    gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(playlistMenuBtn), "content-loading-symbolic");
+    widgets->menuBtnImg = gtk_image_new_from_icon_name("content-loading-symbolic");
+    gtk_menu_button_set_child(GTK_MENU_BUTTON(playlistMenuBtn), widgets->menuBtnImg);
     gtk_widget_add_css_class(playlistMenuBtn, "icon-md");
     gtk_widget_add_css_class(gtk_widget_get_first_child(playlistMenuBtn), "flat");
     gtk_widget_set_margin_top(playlistMenuBtn, 4);
@@ -840,26 +867,10 @@ void setupUI(AppState *state) {
     g_signal_connect(factory, "bind", G_CALLBACK(playlistitemBindCb), state);
     g_signal_connect(factory, "unbind", G_CALLBACK(playlistitemUnbindCb), state);
     widgets->playlistScr = gtk_scrolled_window_new();
-    widgets->selection_model = gtk_multi_selection_new(G_LIST_MODEL(widgets->playlistStore));
-    widgets->playlist = gtk_list_view_new(GTK_SELECTION_MODEL(widgets->selection_model), factory);
+    widgets->selectionModel = gtk_multi_selection_new(G_LIST_MODEL(widgets->playlistStore));
+    widgets->playlist = gtk_list_view_new(GTK_SELECTION_MODEL(widgets->selectionModel), factory);
     g_signal_connect(widgets->playlist, "activate", G_CALLBACK(playlistitemActivateCb), state);
     gtk_widget_set_vexpand(widgets->playlistScr, TRUE);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(widgets->playlistScr), widgets->playlist);
     gtk_box_append(GTK_BOX(mainBox), widgets->playlistScr);
 }
-
-//guint create_generic_signal(const gchar *name) {
-//    guint sig = g_signal_new(
-//            name,
-//            G_TYPE_OBJECT,
-//            G_SIGNAL_RUN_FIRST,
-//            0,
-//            NULL,
-//            NULL,
-//            g_cclosure_marshal_VOID__POINTER,
-//            G_TYPE_NONE,
-//            1,
-//            G_TYPE_POINTER
-//    );
-//    return sig;
-//}

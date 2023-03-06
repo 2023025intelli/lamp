@@ -1,3 +1,11 @@
+/*
+**          |                |                   |        |
+**   __ \   |   _` |  |   |  __ \    _` |   __|  |  /     __ \
+**   |   |  |  (   |  |   |  |   |  (   |  (       <      | | |
+**   .__/  _| \__,_| \__, | _.__/  \__,_| \___| _|\_\ _| _| |_|
+**  _|               ____/
+*/
+
 #ifndef LAMP4_PLAYBACK_H
 #define LAMP4_PLAYBACK_H
 
@@ -58,6 +66,6 @@ static int audioResample(
 
 AVPacket *getAlbumArt(const char *filename);
 
-int audioGetDuration(AVFormatContext *format_ctx);
+static guint audioGetDuration(AVFormatContext *format_ctx);
 
 #endif //LAMP4_PLAYBACK_H

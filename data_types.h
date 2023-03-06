@@ -1,3 +1,11 @@
+//
+//       |        |                 |                                  |
+//    _` |   _` |  __|   _` |        __|  |   |  __ \    _ \   __|     __ \
+//   (   |  (   |  |    (   |        |    |   |  |   |   __/ \__ \     | | |
+//  \__,_| \__,_| \__| \__,_| ____| \__| \__, |  .__/  \___| ____/ _| _| |_|
+//                                        ____/  _|
+//
+
 #ifndef LAMP4_DATA_TYPES_H
 #define LAMP4_DATA_TYPES_H
 
@@ -34,10 +42,16 @@ typedef struct AudioContext {
     SDL_AudioSpec *want, *have;
     PacketQueue *audio_queue;
     double time_base;
+    guint duration;
 } AudioContext;
 
 typedef struct {
+    gboolean time_remain;
+} Settings;
+
+typedef struct {
     GtkWidget *win;
+    GtkWidget *headerBar;
     GtkWidget *coverImg;
     GtkWidget *titleLbl;
     GtkWidget *albumLbl;
@@ -48,19 +62,21 @@ typedef struct {
     GtkWidget *shuffleTgl;
     GtkWidget *settingsBtn;
     GtkWidget *positionSld;
+    GtkWidget *positionTgl;
     GtkWidget *positionLbl;
     GtkWidget *prevBtn;
     GtkWidget *stopBtn;
     GtkWidget *playBtn;
     GtkWidget *pauseBtn;
     GtkWidget *nextBtn;
+    GtkWidget *menuBtnImg;
     GtkFileFilter *audioFilter;
     /* Playlist */
     GtkWidget *playlist;
     GtkWidget *playlistLbl;
     GtkWidget *playlistScr;
     GListStore *playlistStore;
-    GtkMultiSelection *selection_model;
+    GtkMultiSelection *selectionModel;
     /* Icons */
     GtkWidget *repeatImg;
     GtkWidget *shuffleImg;
@@ -87,7 +103,9 @@ typedef struct AppState {
     int current_index;
     char *current_file;
     int shuffle_current;
+    guint index_counter;
     GApplication *app;
+    Settings *settings;
     AppWidgets *widgets;
     AudioContext *audio_ctx;
 } AppState;

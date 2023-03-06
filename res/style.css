@@ -6,6 +6,12 @@
 //             ____/
 */
 
+.dark-theme {
+    background-color: #3a3a3a;
+    color: #ffffff;
+    background-image: none;
+}
+
 .sld-volume highlight {
     background-color: #32dad4;
 }
@@ -19,12 +25,15 @@
 }
 
 .sld-position slider {
-    min-height: 24px;
+    min-height: 28px;
 }
 
 .highlight-row {
-    background-color: #cccccc;
-    color: #000000;
+    color: #ff7b00;
+}
+
+.highlight-row:selected {
+    color: #ffffff;
 }
 
 .rounded {
@@ -58,6 +67,10 @@
 
 .bg-purple {
     background-color: #7b68ee;
+}
+
+.icon-sm {
+    -gtk-icon-size: 1rem;
 }
 
 .icon-md {

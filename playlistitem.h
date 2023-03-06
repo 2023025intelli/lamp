@@ -1,3 +1,11 @@
+//
+//          |                | _)       |    _) |                         |
+//   __ \   |   _` |  |   |  |  |   __|  __|  |  __|   _ \  __ `__ \      __ \
+//   |   |  |  (   |  |   |  |  | \__ \  |    |  |     __/  |   |   |     | | |
+//   .__/  _| \__,_| \__, | _| _| ____/ \__| _| \__| \___| _|  _|  _| _| _| |_|
+//  _|               ____/
+//
+
 #ifndef LAMP4_PLAYLISTITEM_H
 #define LAMP4_PLAYLISTITEM_H
 
@@ -12,9 +20,9 @@
 
 GType playlist_item_get_type(void);
 
-static void playlist_item_class_init(gpointer g_class, gpointer g_class_data);
-
 static void playlist_item_init(GTypeInstance *instance, gpointer g_class);
+
+static void playlist_item_class_init(gpointer g_class, gpointer g_class_data);
 
 typedef struct _PlaylistItem PlaylistItem;
 typedef struct _PlaylistItemClass PlaylistItemClass;
@@ -23,6 +31,7 @@ struct _PlaylistItem {
     GObject parent;
     char filePath[1024];
     char name[128];
+    guint index;
 };
 
 struct _PlaylistItemClass {

@@ -1,3 +1,11 @@
+//
+//          |                |                   |
+//   __ \   |   _` |  |   |  __ \    _` |   __|  |  /      __|
+//   |   |  |  (   |  |   |  |   |  (   |  (       <      (
+//   .__/  _| \__,_| \__, | _.__/  \__,_| \___| _|\_\ _| \___|
+//  _|               ____/
+//
+
 #include "playback.h"
 #include <assert.h>
 
@@ -21,7 +29,8 @@ static int audioContextInit(AudioContext *audio_ctx) {
     SDL_zero(*audio_ctx->want);
     SDL_zero(*audio_ctx->have);
     audio_ctx->audio_stream = -1;
-    audio_ctx->position = -0;
+    audio_ctx->position = 0;
+    audio_ctx->duration = 0;
     audio_ctx->format_ctx = NULL;
     audio_ctx->codec_ctx = NULL;
     audio_ctx->audio_codec = NULL;
@@ -91,6 +100,7 @@ int playAudio(AppState *state, const char *filename) {
     }
 
     // TIMEBASE = NUM / DEN
+    audio_ctx->duration = audioGetDuration(state->audio_ctx->format_ctx);
     audio_ctx->time_base = av_q2d(audio_ctx->format_ctx->streams[audio_ctx->audio_stream]->time_base);
     audio_ctx->codec_par = audio_ctx->format_ctx->streams[audio_ctx->audio_stream]->codecpar;
     if (!(audio_ctx->audio_codec = avcodec_find_decoder(audio_ctx->codec_par->codec_id))) {
@@ -328,6 +338,8 @@ static int audioDecodeFrame(AppState *state, uint8_t *audio_buf, int buf_size) {
     static int audio_pkt_size = 0;
     int prev_position = 0;
 
+    if (!state->playing) { return -1; }
+
     aCodecCtx = state->audio_ctx->codec_ctx;
     static AVFrame *avFrame = NULL;
     avFrame = av_frame_alloc();
@@ -352,7 +364,7 @@ static int audioDecodeFrame(AppState *state, uint8_t *audio_buf, int buf_size) {
             if (ret == AVERROR(EAGAIN)) {
                 ret = 0;
             }
-            if (ret == 0) {
+            if (ret == 0 && state->playing) {
                 ret = avcodec_send_packet(aCodecCtx, (*pkt_list)->pkt);
             }
             if (ret == AVERROR(EAGAIN)) {
@@ -687,7 +699,7 @@ AVPacket *getAlbumArt(const char *filename) {
     return tmp;
 }
 
-int audioGetDuration(AVFormatContext *format_ctx) {
+static guint audioGetDuration(AVFormatContext *format_ctx) {
     if (format_ctx->duration) {
         return (int) format_ctx->duration / 1000000;
     }

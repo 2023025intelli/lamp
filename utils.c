@@ -1,4 +1,11 @@
-#include <malloc.h>
+//
+//         |    _)  |
+//   |   |  __|  |  |   __|      __|
+//   |   |  |    |  | \__ \     (
+//  \__,_| \__| _| _| ____/ _| \___|
+//
+//
+
 #include "utils.h"
 
 int strInArray(const char *str, char *arr[], int lenght) {
@@ -13,9 +20,9 @@ int strCompare(const char *str1, const char *str2) {
     return *str1 - *str2;
 }
 
-char *secondsToStr(int seconds) {
-    char *str = malloc(sizeof(char) * 24);
-    sprintf(str, "%d:%02d", seconds / 60, seconds % 60);
+char *secondsToStr(int seconds, int negative) {
+    char *str = malloc(sizeof(char) * 6);
+    sprintf(str, "%s%d:%02d", (negative ? "-" : ""), seconds / 60, seconds % 60);
     return str;
 }
 

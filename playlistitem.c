@@ -1,3 +1,11 @@
+//
+//          |                | _)       |    _) |
+//   __ \   |   _` |  |   |  |  |   __|  __|  |  __|   _ \  __ `__ \       __|
+//   |   |  |  (   |  |   |  |  | \__ \  |    |  |     __/  |   |   |     (
+//   .__/  _| \__,_| \__, | _| _| ____/ \__| _| \__| \___| _|  _|  _| _| \___|
+//  _|               ____/
+//
+
 #include "playlistitem.h"
 
 static GObject *playlist_item_constructor(GType type, guint n_construct_properties, GObjectConstructParam *construct_properties) {

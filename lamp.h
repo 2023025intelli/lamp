@@ -1,3 +1,11 @@
+//
+//   |                              |
+//   |   _` |  __ `__ \   __ \      __ \
+//   |  (   |  |   |   |  |   |     | | |
+//  _| \__,_| _|  _|  _|  .__/  _| _| |_|
+//                       _|
+//
+
 #ifndef LAMP_LAMP_H
 #define LAMP_LAMP_H
 
@@ -10,11 +18,11 @@
 
 AppWidgets *appWidgetsCreate();
 
-int stateObserver(gpointer data);
-
 void configureUI(AppState *state);
 
 GtkWidget *windowInit(AppState *state);
+
+gboolean stateObserver(gpointer user_data);
 
 AppState *appStateCreate(GApplication *app);
 
@@ -70,13 +78,13 @@ gboolean positionChangedCb(GtkRange *self, GtkScrollType *scroll, gdouble value,
  * Playlist Functions
 *********************************************************/
 
-void playlistAddFile(GListStore *playlist, GFile *file);
-
 void playlistLoad(const char *filename, AppState *state);
 
 void playlistSave(const char *filename, AppState *state);
 
 void addFile(GSimpleAction *action, GVariant *parameter, gpointer data);
+
+void playlistAddFile(GListStore *playlist, GFile *file, AppState *state);
 
 void openFolder(GSimpleAction *action, GVariant *parameter, gpointer data);
 
@@ -112,9 +120,15 @@ void updateUI(AppState *state);
 
 void setPositionStr(AppState *state);
 
-void updateHighlight(AppState *state);
-
 void setDefaultImage(GtkWidget *image);
+
+void highlightRow(AppState *state, guint position);
+
+void unHighlightRow(AppState *state, guint position);
+
+GtkWidget *getRowAtPosition(AppState *state, guint position);
+
+void timeRemainToggle(GtkToggleButton *self, AppState *state);
 
 int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int height);
 
