@@ -62,7 +62,6 @@ typedef struct {
     GtkWidget *shuffleTgl;
     GtkWidget *settingsBtn;
     GtkWidget *positionSld;
-    GtkWidget *positionTgl;
     GtkWidget *positionLbl;
     GtkWidget *prevBtn;
     GtkWidget *stopBtn;
@@ -70,7 +69,7 @@ typedef struct {
     GtkWidget *pauseBtn;
     GtkWidget *nextBtn;
     GtkWidget *menuBtnImg;
-    GtkFileFilter *audioFilter;
+    GtkGesture *positionLblGestureClick;
     /* Playlist */
     GtkWidget *playlist;
     GtkWidget *playlistLbl;
@@ -108,6 +107,7 @@ typedef struct AppState {
     Settings *settings;
     AppWidgets *widgets;
     AudioContext *audio_ctx;
+    GListStore *audioFilter;
 } AppState;
 
 #endif //LAMP4_DATA_TYPES_H

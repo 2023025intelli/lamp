@@ -79,18 +79,20 @@ AppState *appStateCreate(GApplication *app) {
     state->width = WINDOW_WIDTH;
     state->height = WINDOW_HEIGHT;
     state->art_size = ALBUM_ART_WIDTH;
+    state->audioFilter = g_list_store_new(GTK_TYPE_FILE_FILTER);
+    GtkFileFilter *filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "Audio Files");
+    for (int i = 0; i < supportedMimeTypesCount; i++) {
+        gtk_file_filter_add_mime_type(filter, supportedMimeTypes[i]);
+    }
+    g_list_store_append(state->audioFilter, filter);
     return state;
 }
 
 void configureUI(AppState *state) {
     AppWidgets *widgets = state->widgets;
-    widgets->audioFilter = gtk_file_filter_new();
     GtkEventControllerKey *key_event = (GtkEventControllerKey *) gtk_event_controller_key_new();
     gtk_widget_add_controller(state->widgets->win, key_event);
-    gtk_file_filter_set_name(widgets->audioFilter, "Audio Files");
-    for (int i = 0; i < supportedMimeTypesCount; i++) {
-        gtk_file_filter_add_mime_type(widgets->audioFilter, supportedMimeTypes[i]);
-    }
     gtk_range_set_value(GTK_RANGE(widgets->volumeSld), DEFAULT_VOLUME);
     g_signal_connect(key_event, "key-pressed", G_CALLBACK(keypressHandler), state);
     g_signal_connect(widgets->volumeSld, "value-changed", G_CALLBACK(volumeChangedCb), state);
@@ -102,7 +104,7 @@ void configureUI(AppState *state) {
     g_signal_connect(widgets->prevBtn, "clicked", G_CALLBACK(prevBtnCB), state);
     g_signal_connect(widgets->repeatTgl, "toggled", G_CALLBACK(repeatTglCB), state);
     g_signal_connect(widgets->shuffleTgl, "toggled", G_CALLBACK(shuffleTglCB), state);
-    g_signal_connect(widgets->positionTgl, "toggled", G_CALLBACK(timeRemainToggle), state);
+    g_signal_connect(widgets->positionLblGestureClick, "pressed", G_CALLBACK(timeLblPressed), state);
 }
 
 GtkWidget *windowInit(AppState *state) {
@@ -294,7 +296,6 @@ void repeatTglCB(GtkToggleButton *self, gpointer user_data) {
         case REPEAT_ALL: {
             gtk_image_clear(GTK_IMAGE(state->widgets->repeatImg));
             gtk_image_set_from_icon_name(GTK_IMAGE(state->widgets->repeatImg), "media-playlist-repeat-song-symbolic");
-//            gtk_image_set_from_resource(GTK_IMAGE(state->widgets->repeatImg), "/res/icon/default/repeat-one.svg");
             gtk_toggle_button_set_active(self, TRUE);
             state->repeat = REPEAT_ONE;
             break;
@@ -302,7 +303,6 @@ void repeatTglCB(GtkToggleButton *self, gpointer user_data) {
         case REPEAT_ONE: {
             gtk_image_clear(GTK_IMAGE(state->widgets->repeatImg));
             gtk_image_set_from_icon_name(GTK_IMAGE(state->widgets->repeatImg), "media-playlist-repeat-symbolic");
-//            gtk_image_set_from_resource(GTK_IMAGE(state->widgets->repeatImg), "/res/icon/default/repeat-all.svg");
             state->repeat = REPEAT_OFF;
         }
         default: {
@@ -320,7 +320,7 @@ void shuffleTglCB(GtkToggleButton *self, gpointer user_data) {
 }
 
 static void shufflePlaylist(AppState *state) {
-    int num1, num2, tmp;
+    guint num1, num2, tmp;
     srand(time(0));
     guint n_items = g_list_model_get_n_items(G_LIST_MODEL(state->widgets->playlistStore));
     state->shuffle_arr = malloc(sizeof(int) * n_items);
@@ -346,41 +346,32 @@ static void clearShuffle(AppState *state) {
 
 void addFile(GSimpleAction *action, GVariant *parameter, gpointer data) {
     AppState *state = (AppState *) data;
-    GtkFileChooserNative *native = gtk_file_chooser_native_new(
-        "Open File", GTK_WINDOW(state->widgets->win), GTK_FILE_CHOOSER_ACTION_OPEN, "_Open", "_Cancel"
-    );
-    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(native), state->widgets->audioFilter);
-    gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(native), TRUE);
-    g_signal_connect(native, "response", G_CALLBACK(onFileAddCb), state);
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(native));
+    GtkFileDialog *dialog = gtk_file_dialog_new();
+    gtk_file_dialog_set_title(dialog, "Open File(s)");
+    gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(state->audioFilter));
+    gtk_file_dialog_open_multiple(dialog, GTK_WINDOW(state->widgets->win), NULL, onFileAddCb, state);
 }
 
 void openFolder(GSimpleAction *action, GVariant *parameter, gpointer data) {
     AppState *state = (AppState *) data;
-    GtkFileChooserNative *native = gtk_file_chooser_native_new(
-        "Open Folder", GTK_WINDOW(state->widgets->win), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, "_Open", "_Cancel"
-    );
-    g_signal_connect(native, "response", G_CALLBACK(onFolderAddCb), state);
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(native));
+    GtkFileDialog *dialog = gtk_file_dialog_new();
+    gtk_file_dialog_set_title(dialog, "Open Folder");
+    gtk_file_dialog_select_folder(dialog, GTK_WINDOW(state->widgets->win), NULL, onFolderAddCb, state);
 }
 
 void openPlaylist(GSimpleAction *action, GVariant *parameter, gpointer data) {
     AppState *state = (AppState *) data;
-    GtkFileChooserNative *native = gtk_file_chooser_native_new(
-        "Open Playlist", GTK_WINDOW(state->widgets->win), GTK_FILE_CHOOSER_ACTION_OPEN, "_Open", "_Cancel"
-    );
-    g_signal_connect(native, "response", G_CALLBACK(onPlaylistOpenCb), state);
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(native));
+    GtkFileDialog *dialog = gtk_file_dialog_new();
+    gtk_file_dialog_set_title(dialog, "Open Playlist");
+    gtk_file_dialog_open(dialog, GTK_WINDOW(state->widgets->win), NULL, onPlaylistOpenCb, state);
 }
 
 void savePlaylist(GSimpleAction *action, GVariant *parameter, gpointer data) {
     AppState *state = (AppState *) data;
-    GtkFileChooserNative *native = gtk_file_chooser_native_new(
-        "Save Playlist", GTK_WINDOW(state->widgets->win), GTK_FILE_CHOOSER_ACTION_SAVE, "_Save", "_Cancel"
-    );
-    g_signal_connect(native, "response", G_CALLBACK(onPlaylistSaveCb), state);
-    gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(native), "Untitled");
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(native));
+    GtkFileDialog *dialog = gtk_file_dialog_new();
+    gtk_file_dialog_set_title(dialog, "Save Playlist");
+    gtk_file_dialog_set_initial_name(dialog, "Untitled");
+    gtk_file_dialog_save(dialog, GTK_WINDOW(state->widgets->win), NULL, onPlaylistSaveCb, state);
 }
 
 void playlistClear(GSimpleAction *action, GVariant *parameter, gpointer data) {
@@ -413,63 +404,53 @@ void playlistitemUnbindCb(GtkListItemFactory *factory, GtkListItem *list_item, g
     }
 }
 
-void onFileAddCb(GtkNativeDialog *native, int response, gpointer user_data) {
+void onFileAddCb(GtkFileDialog *self, GAsyncResult *res, gpointer user_data) {
     AppState *state = (AppState *) user_data;
-    if (response == GTK_RESPONSE_ACCEPT) {
-        gpointer item;
-        GtkFileChooser *chooser = GTK_FILE_CHOOSER(native);
-        GListModel *list = gtk_file_chooser_get_files(chooser);
-        for (int i = 0; (item = g_list_model_get_item(list, i)); i++) {
-            playlistAddFile(state->widgets->playlistStore, item, state);
-        }
-        g_object_unref(list);
+    gpointer item;
+    GListModel *list = gtk_file_dialog_open_multiple_finish(self, res, NULL);
+    for (int i = 0; (item = g_list_model_get_item(list, i)); i++) {
+        playlistAddFile(state->widgets->playlistStore, item, state);
     }
-    g_object_unref(native);
+    g_object_unref(list);
+    g_object_unref(self);
 }
 
-void onFolderAddCb(GtkNativeDialog *native, int response, gpointer user_data) {
+void onFolderAddCb(GtkFileDialog *self, GAsyncResult *res, gpointer user_data) {
     AppState *state = (AppState *) user_data;
-    if (response == GTK_RESPONSE_ACCEPT) {
-        GFileInfo *info;
-        GtkFileChooser *chooser = GTK_FILE_CHOOSER(native);
-        GFile *folder = gtk_file_chooser_get_file(chooser);
-        GFileEnumerator *iter = g_file_enumerate_children(
-            folder, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
-            G_FILE_QUERY_INFO_NONE, NULL, NULL
-        );
-        while ((info = g_file_enumerator_next_file(iter, NULL, NULL))) {
-            GFile *file = g_file_new_build_filename(g_file_get_path(folder), g_file_info_get_name(info), NULL);
-            if (strInArray(g_file_info_get_content_type(info), (char **) supportedMimeTypes, supportedMimeTypesCount)) {
-                playlistAddFile(state->widgets->playlistStore, file, state);
-            }
-            g_object_unref(file);
+    GFile *folder = gtk_file_dialog_select_folder_finish(self, res, NULL);
+    GFileInfo *info;
+    GFileEnumerator *iter = g_file_enumerate_children(
+        folder, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
+        G_FILE_QUERY_INFO_NONE, NULL, NULL
+    );
+    while ((info = g_file_enumerator_next_file(iter, NULL, NULL))) {
+        GFile *file = g_file_new_build_filename(g_file_get_path(folder), g_file_info_get_name(info), NULL);
+        if (strInArray(g_file_info_get_content_type(info), (char **) supportedMimeTypes, supportedMimeTypesCount)) {
+            playlistAddFile(state->widgets->playlistStore, file, state);
         }
-        g_object_unref(folder);
-        g_object_unref(iter);
-    }
-    g_object_unref(native);
-}
-
-void onPlaylistOpenCb(GtkNativeDialog *native, int response, gpointer user_data) {
-    AppState *state = (AppState *) user_data;
-    if (response == GTK_RESPONSE_ACCEPT) {
-        playlistClear(NULL, NULL, state);
-        GtkFileChooser *chooser = GTK_FILE_CHOOSER(native);
-        GFile *file = gtk_file_chooser_get_file(chooser);
-        playlistLoad(g_file_get_path(file), state);
         g_object_unref(file);
     }
-    g_object_unref(native);
+    g_object_unref(folder);
+    g_object_unref(iter);
+    g_object_unref(self);
 }
 
-void onPlaylistSaveCb(GtkNativeDialog *native, int response, gpointer user_data) {
+void onPlaylistOpenCb(GtkFileDialog *self, GAsyncResult *res, gpointer user_data) {
     AppState *state = (AppState *) user_data;
-    if (response == GTK_RESPONSE_ACCEPT) {
-        GtkFileChooser *chooser = GTK_FILE_CHOOSER(native);
-        GFile *file = gtk_file_chooser_get_file(chooser);
-        playlistSave(g_file_get_path(file), state);
-    }
-    g_object_unref(native);
+    GFile *file = gtk_file_dialog_open_finish(self, res, NULL);
+    if (!file) { return; }
+    playlistClear(NULL, NULL, state);
+    playlistLoad(g_file_get_path(file), state);
+    g_object_unref(file);
+    g_object_unref(self);
+}
+
+void onPlaylistSaveCb(GtkFileDialog *self, GAsyncResult *res, gpointer user_data) {
+    AppState *state = (AppState *) user_data;
+    GFile *file = gtk_file_dialog_save_finish(self, res, NULL);
+    if (!file) { return; }
+    playlistSave(g_file_get_path(file), state);
+    g_object_unref(self);
 }
 
 void playlistAddFile(GListStore *playlist, GFile *file, AppState *state) {
@@ -577,7 +558,8 @@ void setPositionStr(AppState *state) {
     free(position_str);
 }
 
-void timeRemainToggle(GtkToggleButton *self, AppState *state) {
+void timeLblPressed(GtkGestureClick *self, gint n_press, gdouble x, gdouble y, gpointer user_data) {
+    AppState *state = (AppState *) user_data;
     state->settings->time_remain = !state->settings->time_remain;
 }
 
@@ -755,14 +737,14 @@ void setupUI(AppState *state) {
     gtk_widget_set_sensitive(widgets->positionSld, FALSE);
     gtk_widget_set_hexpand(widgets->positionSld, TRUE);
     gtk_widget_add_css_class(widgets->positionSld, "sld-position");
-    widgets->positionTgl = gtk_toggle_button_new();
-    gtk_widget_add_css_class(widgets->positionTgl, "flat");
+    widgets->positionLblGestureClick = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(widgets->positionLblGestureClick), GDK_BUTTON_PRIMARY);
     widgets->positionLbl = gtk_label_new(NULL);
+    gtk_widget_add_controller(widgets->positionLbl, GTK_EVENT_CONTROLLER(widgets->positionLblGestureClick));
     gtk_label_set_width_chars(GTK_LABEL(widgets->positionLbl), 6);
     gtk_label_set_justify(GTK_LABEL(widgets->positionLbl), GTK_JUSTIFY_CENTER);
-    gtk_button_set_child(GTK_BUTTON(widgets->positionTgl), widgets->positionLbl);
     gtk_box_append(GTK_BOX(positionBox), widgets->positionSld);
-    gtk_box_append(GTK_BOX(positionBox), widgets->positionTgl);
+    gtk_box_append(GTK_BOX(positionBox), widgets->positionLbl);
     gtk_box_append(GTK_BOX(mainBox), positionBox);
     /* Control Panel */
     GtkWidget *controlGrid = gtk_grid_new();

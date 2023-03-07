@@ -88,7 +88,7 @@ void playlistAddFile(GListStore *playlist, GFile *file, AppState *state);
 
 void openFolder(GSimpleAction *action, GVariant *parameter, gpointer data);
 
-void onFileAddCb(GtkNativeDialog *native, int response, gpointer user_data);
+void onFileAddCb(GtkFileDialog *self, GAsyncResult *res, gpointer user_data);
 
 void openPlaylist(GSimpleAction *action, GVariant *parameter, gpointer data);
 
@@ -96,11 +96,11 @@ void savePlaylist(GSimpleAction *action, GVariant *parameter, gpointer data);
 
 void playlistClear(GSimpleAction *action, GVariant *parameter, gpointer data);
 
-void onFolderAddCb(GtkNativeDialog *native, int response, gpointer user_data);
+void onFolderAddCb(GtkFileDialog *self, GAsyncResult *res, gpointer user_data);
 
-void onPlaylistOpenCb(GtkNativeDialog *native, int response, gpointer user_data);
+void onPlaylistSaveCb(GtkFileDialog *self, GAsyncResult *res, gpointer user_data);
 
-void onPlaylistSaveCb(GtkNativeDialog *native, int response, gpointer user_data);
+void onPlaylistOpenCb(GtkFileDialog *self, GAsyncResult *res, gpointer user_data);
 
 void playlistitemBindCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data);
 
@@ -128,9 +128,9 @@ void unHighlightRow(AppState *state, guint position);
 
 GtkWidget *getRowAtPosition(AppState *state, guint position);
 
-void timeRemainToggle(GtkToggleButton *self, AppState *state);
-
 int setPictureToWidget(const char *filename, GtkWidget *widget, int width, int height);
+
+void timeLblPressed(GtkGestureClick *self, gint n_press, gdouble x, gdouble y, gpointer user_data);
 
 void playlistitemSetupCb(GtkListItemFactory *factory, GtkListItem *list_item, gpointer *user_data);
 
